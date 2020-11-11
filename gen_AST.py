@@ -37,7 +37,7 @@ lex.keywords = (
 print(lex.tokens)
 '''
 
-mode = 1
+mode = 0
 
 if mode == 0:
     s = preprocess_cmd(r'./c_file/year.c',
@@ -45,7 +45,6 @@ if mode == 0:
 
     with open('./gcc_E_file.out', 'w') as f:
         f.write(s)
-
 
     parser = CParser()
     ast = parser.parse(s, './c_file/year.c')

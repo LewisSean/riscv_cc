@@ -5,6 +5,7 @@ struct point{
 int main(){
     int i = 10;
     int sum = 0;
+    int array[] = {1,2,3,4};
     if(i < 10)goto L1;
     while(i > 0){
         int c = i;
