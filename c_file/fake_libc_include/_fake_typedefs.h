@@ -1,13 +1,5 @@
-# 1 "./c_file/year.c"
-# 1 "<built-in>"
-# 1 "<command-line>"
-# 1 "./c_file/year.c"
-# 1 "./c_file/fake_libc_include/stdio.h" 1
-# 1 "./c_file/fake_libc_include/_fake_defines.h" 1
-# 2 "./c_file/fake_libc_include/stdio.h" 2
-# 1 "./c_file/fake_libc_include/_fake_typedefs.h" 1
-
-
+#ifndef _FAKE_TYPEDEFS_H
+#define _FAKE_TYPEDEFS_H
 
 typedef int size_t;
 typedef int __builtin_va_list;
@@ -118,7 +110,7 @@ typedef int stack_t;
 typedef int siginfo_t;
 typedef int z_stream;
 
-
+/* C99 exact-width integer types */
 typedef int int8_t;
 typedef int uint8_t;
 typedef int int16_t;
@@ -128,7 +120,7 @@ typedef int uint32_t;
 typedef int int64_t;
 typedef int uint64_t;
 
-
+/* C99 minimum-width integer types */
 typedef int int_least8_t;
 typedef int uint_least8_t;
 typedef int int_least16_t;
@@ -138,7 +130,7 @@ typedef int uint_least32_t;
 typedef int int_least64_t;
 typedef int uint_least64_t;
 
-
+/* C99 fastest minimum-width integer types */
 typedef int int_fast8_t;
 typedef int uint_fast8_t;
 typedef int int_fast16_t;
@@ -148,18 +140,18 @@ typedef int uint_fast32_t;
 typedef int int_fast64_t;
 typedef int uint_fast64_t;
 
-
+/* C99 integer types capable of holding object pointers */
 typedef int intptr_t;
 typedef int uintptr_t;
 
-
+/* C99 greatest-width integer types */
 typedef int intmax_t;
 typedef int uintmax_t;
 
-
+/* C99 stdbool.h bool type. _Bool is built-in in C99 */
 typedef _Bool bool;
 
-
+/* Mir typedefs */
 typedef void* MirEGLNativeWindowType;
 typedef void* MirEGLNativeDisplayType;
 typedef struct MirConnection MirConnection;
@@ -172,69 +164,9 @@ typedef struct MirPersistentId MirPersistentId;
 typedef struct MirBlob MirBlob;
 typedef struct MirDisplayConfig MirDisplayConfig;
 
-
+/* xcb typedefs */
 typedef struct xcb_connection_t xcb_connection_t;
 typedef uint32_t xcb_window_t;
 typedef uint32_t xcb_visualid_t;
-# 2 "./c_file/fake_libc_include/stdio.h" 2
-# 2 "./c_file/year.c" 2
-# 1 "./c_file/fake_libc_include/string.h" 1
-# 1 "./c_file/fake_libc_include/_fake_defines.h" 1
-# 2 "./c_file/fake_libc_include/string.h" 2
-# 3 "./c_file/year.c" 2
-# 1 "./c_file/fake_libc_include/stdlib.h" 1
-# 1 "./c_file/fake_libc_include/_fake_defines.h" 1
-# 2 "./c_file/fake_libc_include/stdlib.h" 2
-# 4 "./c_file/year.c" 2
 
-void convert(int thousands, int hundreds, int tens, int ones)
-{
-char *num[] = {"", "One", "Two", "Three", "Four", "Five", "Six",
-        "Seven", "Eight", "Nine"};
-
-char *for_ten[] = {"", "", "Twenty", "Thirty", "Fourty", "Fifty", "Sixty",
-     "Seventy", "Eighty", "Ninty"};
-
-char *af_ten[] = {"Ten", "Eleven", "Twelve", "Thirteen", "Fourteen",
-    "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Ninteen"};
-
-  printf("\nThe year in words is:\n");
-
-  printf("%s thousand", num[thousands]);
-  if (hundreds != 0)
-    printf(" %s hundred", num[hundreds]);
-
-  if (tens != 1)
-    printf(" %s %s", for_ten[tens], num[ones]);
-  else
-    printf(" %s", af_ten[ones]);
-}
-
-
-int main()
-{
-int year;
-int n1000, n100, n10, n1;
-
-  printf("\nEnter the year (4 digits): ");
-  scanf("%d", &year);
-
-  if (year > 9999 || year < 1000)
-  {
-    printf("\nError !! The year must contain 4 digits.");
-    exit(1);
-  }
-
-  n1000 = year/1000;
-  n100 = ((year)%1000)/100;
-  n10 = (year%100)/10;
-  n1 = ((year%10)%10);
-
-  convert(n1000, n100, n10, n1);
-  int b = 100;
-  do{
-      b--;
-  } while (b != 0);
-
-return 0;
-}
+#endif

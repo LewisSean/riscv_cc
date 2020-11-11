@@ -38,8 +38,8 @@ print(lex.tokens)
 '''
 
 
-s = preprocess_cmd(r'C:/users/Sean/Desktop/pycparser-master/examples/c_files/year.c',
-                   'gcc', ['-nostdinc', '-E', r'-IC:/users/Sean/Desktop/pycparser-master/utils/fake_libc_include'])
+s = preprocess_cmd(r'./c_file/year.c',
+                   'gcc', ['-nostdinc', '-E', r'-I./c_file/fake_libc_include'])
 
 
 with open('./gcc_E_file.out', 'w') as f:
@@ -47,7 +47,7 @@ with open('./gcc_E_file.out', 'w') as f:
 
 
 parser = CParser()
-ast = parser.parse(s, r'C:/users/Sean/Desktop/pycparser-master/examples/c_files/year.c')
+ast = parser.parse(s, './c_file/year.c')
 ast.show()
 print(ast)
 
