@@ -37,26 +37,24 @@ lex.keywords = (
 print(lex.tokens)
 '''
 
+mode = 1
 
-s = preprocess_cmd(r'./c_file/year.c',
-                   'gcc', ['-nostdinc', '-E', r'-I./c_file/fake_libc_include'])
+if mode == 0:
+    s = preprocess_cmd(r'./c_file/year.c',
+                       'gcc', ['-nostdinc', '-E', r'-I./c_file/fake_libc_include'])
+
+    with open('./gcc_E_file.out', 'w') as f:
+        f.write(s)
 
 
-with open('./gcc_E_file.out', 'w') as f:
-    f.write(s)
+    parser = CParser()
+    ast = parser.parse(s, './c_file/year.c')
+    ast.show()
+    print(ast)
 
-
-parser = CParser()
-ast = parser.parse(s, './c_file/year.c')
-ast.show()
-print(ast)
-
-"""
-
-with open('./test.c', 'r') as f:
-    s = f.read()
-parser = CParser()
-ast = parser.parse(s, './test.c')
-print(ast)
-
-"""
+else:
+    with open('./c_file/test.c', 'r') as f:
+        s = f.read()
+    parser = CParser()
+    ast = parser.parse(s, './c_file/test.c')
+    print(ast)
