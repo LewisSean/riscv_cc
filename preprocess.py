@@ -1,5 +1,6 @@
 from subprocess import check_output
 
+
 def preprocess_cmd(filename, gcc_path='gcc', cpp_args=''):
     """
 

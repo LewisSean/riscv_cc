@@ -1,6 +1,6 @@
 from pycparser.c_lexer import CLexer
 from pycparser.c_parser import CParser
-from lex.preprocess import preprocess_cmd
+from preprocess import preprocess_cmd
 
 
 '''
@@ -37,12 +37,12 @@ lex.keywords = (
 print(lex.tokens)
 '''
 
-"""
+
 s = preprocess_cmd(r'C:/users/Sean/Desktop/pycparser-master/examples/c_files/year.c',
                    'gcc', ['-nostdinc', '-E', r'-IC:/users/Sean/Desktop/pycparser-master/utils/fake_libc_include'])
 
 
-with open('../lex/gcc_E_file.out', 'w') as f:
+with open('./gcc_E_file.out', 'w') as f:
     f.write(s)
 
 
@@ -59,4 +59,4 @@ parser = CParser()
 ast = parser.parse(s, './test.c')
 print(ast)
 
-
+"""
