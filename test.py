@@ -1,4 +1,4 @@
-class variable(object):
+class Variable(object):
     def __init__(self, name, offset, len, signed, type, value, inM, inR):
         self.offset = offset  # 相对于基地址的偏移字节数
         self.len = len  # 占用的字节数
