@@ -63,4 +63,12 @@ else:
 """    for node in ast.ext:
         if isinstance(node, (c_ast.Decl, c_ast.FuncDecl, c_ast.Struct,)):
             pass"""
+class block():
+    # 入口 出口  符号表   四元组的列表
+    pass
+
+blocks = dict()
+seed = 0
+seed+=1
+blocks[seed] = block()
 
