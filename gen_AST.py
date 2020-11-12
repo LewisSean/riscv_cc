@@ -1,7 +1,7 @@
 from pycparser.c_lexer import CLexer
 from pycparser.c_parser import CParser
 from preprocess import preprocess_cmd
-
+from pycparser import c_ast
 
 '''
 def error_func(msg, location0, location1):
@@ -37,7 +37,7 @@ lex.keywords = (
 print(lex.tokens)
 '''
 
-mode = 0
+mode = 1
 
 if mode == 0:
     s = preprocess_cmd(r'./c_file/year.c',
@@ -52,8 +52,15 @@ if mode == 0:
     print(ast)
 
 else:
-    with open('./c_file/test.c', 'r') as f:
+    with open('./c_file/test_decl.c', 'r') as f:
         s = f.read()
     parser = CParser()
-    ast = parser.parse(s, './c_file/test.c')
-    print(ast)
+    ast = parser.parse(s, './c_file/test_decl.c')
+    with open('./decls.out', 'w') as f:
+        f.write(str(ast))
+    ast.show()
+
+"""    for node in ast.ext:
+        if isinstance(node, (c_ast.Decl, c_ast.FuncDecl, c_ast.Struct,)):
+            pass"""
+
