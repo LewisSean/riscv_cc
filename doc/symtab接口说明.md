@@ -13,8 +13,9 @@ sts = symtab.symtab_store(ast)
 t = sts.get_symtab_of(u)
 # t的类型是SymTab
 
-# 如要从符号表t中获取名为'x'的符号,使用下面的语句
+# 如要从符号表t中获取名为'x'的符号(包含了向祖先节点查询),使用下面的语句
 x = t.get_symbol('x')
 # x的类型是Symbol,Symbol类目前还没有设计,看后续有哪些需要再说
+# 如果找不到返回None
 
 ```

@@ -11,9 +11,8 @@ class SymTab(dict):
         self.children=[]
 
     def get_symbol(self, name:str) -> Symbol:
-        for sym in self.values():
-            if sym.name == name:
-                return sym
+        if self.get(name) is not None:
+            return self.get(name)
         if self.parent is None:
             return None
         return self.parent.get_symbol(name)
