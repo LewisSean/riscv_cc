@@ -2,7 +2,7 @@ from pycparser import c_ast
 from pycparser import CParser
 
 class Symbol():
-    def __init__(self,name):
+    def __init__(self, name):
         self.name = name
         self.size = 0 # 以byte计
         self.offset = 0 # 以byte计
@@ -10,7 +10,6 @@ class Symbol():
     def __repr__(self):
         return '%s,sz=%d,off=%d'%(self.name,self.size,self.offset)
         
-
 class SymTab(dict):
     def __init__(self, node:c_ast.Node, parent=None):
         self.node = node
@@ -30,16 +29,41 @@ class SymTab(dict):
         self[sym.name] = sym
 
     def __repr__(self):
-        ans = '(' + type(self.node).__name__ + ') '
-        for x in self.values():
-            ans += '['+repr(x)+'] '
+        ans = type(self.node).__name__ 
+        len_name = len(ans)
+        for i,x in enumerate(self.values()):
+            if i>0:
+                ans += '\n' + ' '*len_name
+            ans += ' ['+repr(x)+']'
+
+        return ans
+
+class StructSymbol(Symbol):
+    '''
+    结构体符号,特别之处是它自身持有一张符号表,记录成员变量信息.
+    '''
+    def __init__(self, name):
+        super().__init__(name)
+        self.member_symtab = SymTab(None)
+
+    def get_member_symbol(self, name:str) -> Symbol:
+        return self.member_symtab.get_symbol(name)
+    
+    def add_member_symbol(self, sym:Symbol):
+        self.member_symtab.add_symbol(sym)
+
+    def __repr__(self):
+        ans = super().__repr__()
+        members=''
+        for name in self.member_symtab.keys():
+            members += name+','
+        ans+=',members=['+members[:-1]+']'
         return ans
 
 
 class SymTabStore():
-    def __init__(self, root:c_ast.Node):
+    def __init__(self):
         self._symtab={} # dict[c_ast.Node]->SymTab
-        self.root = root
 
     def get_symtab_of(self, node:c_ast.Node) -> SymTab:
         return self._symtab.get(node)
@@ -47,7 +71,7 @@ class SymTabStore():
     def add_symtab(self, node:c_ast.Node, symtab:SymTab):
         self._symtab[node]=symtab
 
-    def show(self):
+    def show(self, root:c_ast.Node):
         def dfs(u:SymTab):
             ans = repr(u)
             for v in u.children:
@@ -55,7 +79,7 @@ class SymTabStore():
                 tmp = '\n  '.join(tmp.split('\n'))
                 ans += '\n' + tmp
             return ans
-        root_t = self.get_symtab_of(self.root)
+        root_t = self.get_symtab_of(root)
         print(dfs(root_t))
 
 def symtab_store(ast:c_ast.Node) -> SymTabStore:
@@ -66,7 +90,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     '''
 
     # 符号表仓库 最后要返回的结果
-    sts = SymTabStore(ast)
+    sts = SymTabStore()
 
     '''
     辅助函数和变量
@@ -81,6 +105,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     offset = 0
     in_func = False
+    in_struct = False
     current_symtab = None 
     # current_symtab是一个动态变化的变量,dfs下降或返回时它的内容发生改变,
     # 它的内容总是当前遍历过程中正在处理的节点的符号表
@@ -124,39 +149,86 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         nonlocal sts
         t = sts.get_symtab_of(u)
         for v in u.ext:
-            symbol = dfs(v)['symbol']
-            t.add_symbol(symbol)
-
+            res = dfs(v)
+            t.add_symbol(res['symbol'])
+            if res.get('struct_symbol') is not None:
+                t.add_symbol(res['struct_symbol'])
     
     @register('Decl')
-    def decl(u:c_ast.Decl):
+    def decl(u:c_ast.Decl) -> dict:
         '''
         生成一个符号,并设置该符号的offset和size.
         如果它的type是FuncDecl,那么还设置该符号的参数个数.
         return:
             symbol: 生成的那个符号
+            struct_symbol: symbol总是表示定义的变量符号,struct_symbol表示定义的
+                           结构体符号(如果有的话).注意symbol和struct_symbol可能
+                           同时存在,即在定义结构体的同时也定义了此类型的变量.
+            (其他可能的返回值参见FuncDecl的dfs函数)
         '''
         nonlocal offset
 
-        if type(u.type).__name__ == 'FuncDecl':
+        type_name = type(u.type).__name__
+        if type_name == 'FuncDecl':
             return dfs(u.type)
 
-        x = Symbol(u.name)
-        res = dfs(u.type)
-        x.size = res['size']
-        x.offset = offset
-        offset += x.size
-        param_symbols = None
         
-        return {'symbol':x}
+        res = dfs(u.type)
 
+        if u.name is not None:
+            x = Symbol(u.name)
+            x.size = res['size']
+            x.offset = offset
+            offset += x.size
+
+        struct_symbol = None
+        if res.get('struct_symbol') is not None:
+            struct_symbol = res['struct_symbol']
+        
+
+        return {'symbol':x, 'struct_symbol':struct_symbol}
+
+    @register('Struct')
+    def struct(u:c_ast.Struct):
+        '''
+        语法树中出现Struct有两种情况(暂时发现两种),
+        一是定义一个struct,二是使用一个struct.
+        使用struct时,decls=None.
+
+        decls不是None时,返回一个符号,否则只返回size
+        '''
+        nonlocal sts, offset, in_struct
+
+        # 使用一个struct,而不是定义它
+        t = sts.get_symtab_of(u)
+        if u.decls is None:
+            sym = t.get_symbol('struct '+u.name)
+            return {'size':sym.size}
+
+        # 定义一个struct
+        saved_offset = offset
+        offset = 0 # struct内部成员变量的offset是独立的,和函数一样,因而先置零
+        in_struct = True
+
+        size = 0
+        struct_symbol = StructSymbol('struct '+u.name)
+        for d in u.decls:
+            res = dfs(d) 
+            if res.get('struct_symbol') is not None:
+                t.add_symbol(res['struct_symbol'])
+            x = res['symbol']
+            struct_symbol.add_member_symbol(x)
+            size += x.size
+
+        struct_symbol.size = size
+
+        in_struct = False
+        offset = saved_offset
+
+        return {'size':size, 'struct_symbol':struct_symbol}
 
     @register('TypeDecl')
     def type_decl(u:c_ast.TypeDecl) -> dict:
-        '''
-        return:
-            size: 符号的size,以byte计
-        '''
         return dfs(u.type)
 
     @register('IdentifierType')
@@ -210,8 +282,11 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         if u.block_items is not None:
             for v in u.block_items:
                 res = dfs(v)
-                if res is not None and res.get('symbol') is not None:
-                    t.add_symbol(res['symbol'])
+                if res is not None:
+                    if res.get('symbol') is not None:
+                        t.add_symbol(res['symbol'])
+                    if res.get('struct_symbol') is not None:
+                        t.add_symbol(res['struct_symbol'])
 
 
     @register('FuncDef')
@@ -251,10 +326,16 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     dfs(ast)
     return sts
 
+def gen_ast(file:str) -> c_ast.Node:
+    parser = CParser()
+    with open(file, 'r') as f:
+        ast = parser.parse(f.read(), file)
+    return ast
+
 if __name__=='__main__':
-    file = './c_file/1.c'
+    file = './c_file/zc2.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
     sts = symtab_store(ast)
-    sts.show()
+    sts.show(ast)

@@ -22,10 +22,11 @@
 Decl的两个成员以及它们可能的类型(未必全面):
 
 - type
-  - TypeDecl 普通数据类型例如int
+  - TypeDecl 变量的声明走这条线
   - ArrayDecl
   - PtrDecl
   - FuncDecl
+  - Struct 结构体的定义走这条线
 - init
   - Constant
   - InitList 例如数组的初始化列表
@@ -33,14 +34,27 @@ Decl的两个成员以及它们可能的类型(未必全面):
   - UnaryOp 表达式例如&a
   - None 无初始化
 
+## Struct
+
+- name 结构体的名字
+- decls 是一个Decl列表,即结构体中声明的变量
+
 ## TypeDecl
 
 - type
-  - IdentifierType
+  - IdentifierType 不是以struct开头的类型
+  - Struct 以struct开头的类型,此处Struct.decls=None
 
 ## IdentifierType
 
 - names 一个list存了类型的全名例如['unsigned','int']
+
+## Typedef
+
+- name 定义后的类型名
+- storage=['typedef'] (还不清楚什么意思)
+- type
+  - TypeDecl
 
 # 函数定义
 
@@ -79,6 +93,40 @@ FuncDef包含成员:
 函数体就是一个Compound.
 
 - block_items 一个数组,里面可以是任意的类型
+
+# 结构体
+
+```c
+struct Point{
+    int x,y;
+};
+```
+
+上述代码语法树展开为:
+
+- Decl
+  - name=None
+  - type=Struct
+    - Struct的完整信息
+
+```c
+struct Point{
+    int x,y;
+} a,b;
+```
+
+上述代码语法树展开为:
+
+- Decl
+  - name=a
+  - type=TypeDecl
+    - type=Struct
+      - Struct的完整信息
+- Decl
+  - name=b
+  - type=TypeDecl
+    - type=Struct
+      - Struct的完整信息
 
 # 控制语句
 
