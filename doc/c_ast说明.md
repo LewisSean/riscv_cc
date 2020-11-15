@@ -13,9 +13,20 @@
 
   ...
 
-
-
 # 变量声明
+
+```mermaid
+graph TD
+	Decl-->Compound
+	Decl-->FileAST
+	FuncDecl-->Decl
+	TypeDecl-->Decl
+	Struct-->Decl
+	Struct-->TypeDecl
+	IdentifierDecl-->TypeDecl
+	Decl-->FuncDef
+	
+```
 
 ## Decl
 
