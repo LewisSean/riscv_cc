@@ -1,8 +1,7 @@
-from pycparser.c_lexer import CLexer
 from pycparser.c_parser import CParser
 from preprocess import preprocess_cmd
 from pycparser import c_ast
-from block import Quadruple
+from Quadruple.block import Quadruple
 '''
 def error_func(msg, location0, location1):
     print(msg, location0, location1)
@@ -40,10 +39,10 @@ print(lex.tokens)
 mode = 1
 
 if mode == 0:
-    s = preprocess_cmd(r'./c_file/year.c',
+    s = preprocess_cmd(r'../c_file/year.c',
                        'gcc', ['-nostdinc', '-E', r'-I./c_file/fake_libc_include'])
 
-    with open('./gcc_E_file.out', 'w') as f:
+    with open('../gcc_E_file.out', 'w') as f:
         f.write(s)
 
     parser = CParser()
@@ -52,11 +51,11 @@ if mode == 0:
     print(ast)
 
 else:
-    with open('./c_file/test_decl.c', 'r') as f:
+    with open('../c_file/test_decl.c', 'r') as f:
         s = f.read()
     parser = CParser()
     ast = parser.parse(s, './c_file/test_decl.c')
-    with open('./decls.out', 'w') as f:
+    with open('../decls.out', 'w') as f:
         f.write(str(ast))
     ast.show()
     print("ast completed");
