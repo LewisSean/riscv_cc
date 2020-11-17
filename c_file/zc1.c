@@ -1,4 +1,3 @@
-
 int a=5;
 int b=6,c=8;
 int main(int x, int y, int z){
