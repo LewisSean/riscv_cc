@@ -26,6 +26,8 @@ class SymTab(dict):
         return self.parent.get_symbol(name)
     
     def add_symbol(self, sym:Symbol):
+        '''
+        '''
         self[sym.name] = sym
 
     def __repr__(self):
@@ -41,6 +43,8 @@ class SymTab(dict):
 class StructSymbol(Symbol):
     '''
     结构体符号,特别之处是它自身持有一张符号表,记录成员变量信息.
+    size: 结构体的总大小
+    member_symtab: 成员变量符号表
     '''
     def __init__(self, name):
         super().__init__(name)
@@ -60,6 +64,29 @@ class StructSymbol(Symbol):
         ans+=',members=['+members[:-1]+']'
         return ans
 
+class FuncSymbol(Symbol):
+    '''
+    函数符号
+    size: 返回值的size
+    params_symtab: 参数符号表
+    frame_size: (返回值+参数列表+所有局部变量)的总大小,以byte计
+    '''
+    def __init__(self, name):
+        super().__init__(name)
+        self.params_symtab = SymTab(None)
+        self.locals_symtab = SymTab(None)
+        self.frame_size = None
+
+    def add_param_symbol(self, sym:Symbol):
+        self.params_symtab.add_symbol(sym)
+
+    def __repr__(self):
+        ans = super().__repr__()
+        params=''
+        for name in self.params_symtab.keys():
+            params += name+','
+        ans+=',params=['+params[:-1]+'],frame_sz='+str(self.frame_size)
+        return ans
 
 class SymTabStore():
     def __init__(self):
@@ -160,6 +187,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         '''
         生成一个符号,并设置该符号的offset和size.
         如果它的type是FuncDecl,那么还设置该符号的参数个数.
+        然后返回该符号给Decl的上级.注意,Decl并不修改自己的符号表.
         return:
             symbol: 生成的那个符号
             struct_symbol: symbol总是表示定义的变量符号,struct_symbol表示定义的
@@ -257,7 +285,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     @register('FuncDecl')
     def func_decl(u:c_ast.FuncDecl):
         nonlocal offset
-        func_symbol = Symbol(u.type.declname)
+        func_symbol = FuncSymbol(u.type.declname)
         func_symbol.offset = offset
         func_symbol.size = dfs(u.type)['size']
         offset += func_symbol.size
@@ -266,7 +294,6 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         if res.get('param_symbols') is not None:
             symbols = res['param_symbols']
         size = dfs(u.type)['size']
-        func_symbol.param_k = len(symbols)
         return {'func_symbol':func_symbol,'param_symbols':symbols,'size':size}
 
     @register('ParamList')
@@ -307,12 +334,15 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         于是,我们约定在函数内部,返回值的offset为0.
         '''
         res = dfs(u.decl)
-        x = res['func_symbol'] # 代表此函数本身的符号
+        x = res['func_symbol'] # 代表此函数本身的符号,类型是FuncSymbol
         
         for sym in res['param_symbols']: # 此函数的参数的符号
             t.add_symbol(sym)
+            x.add_param_symbol(sym)
 
         dfs(u.body)
+
+        x.frame_size = offset
         
         offset = saved_offset
         in_func = False
