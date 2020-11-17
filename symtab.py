@@ -110,6 +110,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     # current_symtab是一个动态变化的变量,dfs下降或返回时它的内容发生改变,
     # 它的内容总是当前遍历过程中正在处理的节点的符号表
 
+
     def dfs(u:c_ast.Node):
         '''
         此函数将根据u的类型为它选择相应的具体的dfs函数去处理,
@@ -132,7 +133,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
         saved_symtab = current_symtab
         current_symtab = t
-        
+
         res = dfs_fn(u)
 
         current_symtab = saved_symtab
@@ -322,6 +323,26 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def if_else(u:c_ast.If):
         dfs(u.iftrue)
         dfs(u.iffalse)
+
+    @register('Assignment')
+    def assign(u):
+        pass
+
+    @register('While')
+    def While(u):
+        pass
+
+    @register('Return')
+    def Return(u):
+        pass
+
+    @register('Label')
+    def Label(u):
+        pass
+
+    @register('Goto')
+    def goto(u):
+        pass
 
     dfs(ast)
     return sts

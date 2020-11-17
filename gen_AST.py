@@ -67,6 +67,7 @@ class block():
     # 入口 出口  符号表   四元组的列表
     pass
 
+
 blocks = dict()
 seed = 0
 seed+=1
