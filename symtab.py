@@ -201,7 +201,6 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         if type_name == 'FuncDecl':
             return dfs(u.type)
 
-        
         res = dfs(u.type)
 
         if u.name is not None:
@@ -362,6 +361,10 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def While(u):
         pass
 
+    @register('DoWhile')
+    def DoWhile(u):
+        pass
+
     @register('Return')
     def Return(u):
         pass
@@ -373,6 +376,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     @register('Goto')
     def goto(u):
         pass
+
 
     dfs(ast)
     return sts

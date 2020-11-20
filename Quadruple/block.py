@@ -1,5 +1,6 @@
 from pycparser import c_ast
 from pycparser import CParser
+from copy import deepcopy
 from riscv_cc.symtab import symtab_store, SymTab
 
 class Quadruple(object):
@@ -17,20 +18,33 @@ class Quadruple(object):
         return self.arg1 == arg or self.arg2 == arg
 
 
-
-class block(object):
-    def __init__(self, id: int, pre = None, suc = None, Quadruples: list = [], in_live_vals: list = [], out_live_vals: list = []):
+class Block(object):
+    def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, Quadruples: list = [], in_live_vals: list = [], out_live_vals: list = []):
         if Quadruples is None:
             Quadruples = []
         self.id = id
-        self.pre = pre
-        self.suc = suc
+        if pre is not None:
+            self.pre = pre
+        else:
+            self.pre = []
+
+        if suc is not None:
+            self.suc = suc
+        else:
+            self.suc = []
+
+        self.ast_nodes = ast_nodes
+        self.Quadruples = self.gen_quadruples(ast_nodes)
         self.Quadruples = Quadruples
         self.in_live_vals = in_live_vals
         self.out_live_vals = out_live_vals
+        self.true_suc = None
+
+    def gen_quadruples(self, ast_nodes):
+        return []
 
 
-class flow_graph(object):
+class FlowGraph(object):
     """
     获取的是一个函数的流图
     所以入口节点应该是FuncDef
@@ -40,13 +54,38 @@ class flow_graph(object):
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
 
+        # bof 函数体的开始
+        self.bof = True
         # 增设entry和exit两个block(不包含实际四元组)，id分别为0和-1
         self.blocks = dict()
-        self.blocks[0] = block(0)
-        self.blocks[-1] = block(-1)
-        self.id_seed = 1
+        self.blocks[0] = Block(0, [])
+        self.blocks[-1] = Block(-1, [])
+        self.id_seed = 0
         # 其余四元组的id范围: >= 1
-        self._get_blocks(node, symtab)
+        compound: c_ast.Compound = node.body
+        self.symtab = symtab.get_symtab_of(compound)
+        self.labels = {}
+        self._gen_blocks([compound], [0], [-1])
+        # self._get_blocks(compound, symtab)
+        self._complete_graph()
+        self.show()
+
+    def _complete_graph(self):
+        for k in self.blocks.keys():
+            for pre in self.blocks[k].pre:
+                if k not in self.blocks[pre].suc:
+                    self.blocks[pre].suc.append(k)
+
+            for suc in self.blocks[k].suc:
+                if k not in self.blocks[suc].pre:
+                    self.blocks[suc].pre.append(k)
+
+    def show(self):
+        for k in self.blocks.keys():
+            print("id {},  pre: {}, suc: {}".format(self.blocks[k].id, self.blocks[k].pre, self.blocks[k].suc))
+            for node in self.blocks[k].ast_nodes:
+                print(str(type(node)))
+            print('..................................')
 
     def _get_id(self):
         """
@@ -55,13 +94,126 @@ class flow_graph(object):
         self.id_seed += 1
         return self.id_seed
 
-    def _get_blocks(self, node: c_ast.FuncDef, symtab):
+    def _gen_blocks(self, nodes: list, pres: list, sucs: list = None):
         """
-        找到并生成一个函数内的所有block
-        :param ast: c_ast 语法树
+        递归函数，产生当前节点(们)的所有block
+        :param node: 当前节点列表
+        :param pres: 前驱节点id的列表
+        :param sucs: 后继节点id的列表
+        :return:   返回产生的所有block中的入口blocks和出口blocks的id
+        """
+        # 如果当前节点数大于1，则说明这些节点是可以组成一个block的
+        if len(nodes) > 1:
+            new_id = self._get_id()
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs)
+
+            return [new_id], [new_id]
+
+        # 单个节点，且自组成一个block
+        elif not self._is_new_block(nodes[0]):
+            new_id = self._get_id()
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs)
+
+            return [new_id], [new_id]
+        # 处理单个节点，往往需要对子节点递归调用，反例：只有一个四元组的block
+        else:
+            node = nodes[0]
+            # 处理compound节点
+            # 注意compound嵌套
+            if isinstance(node, c_ast.Compound):
+                # 列表为空
+                if len(node.block_items) == 0:
+                    new_id = self._get_id()
+                    self.blocks[new_id] = Block(new_id, [], pres, sucs)
+
+                    return [new_id], [new_id]
+
+                # blocks：存储compound内部所有相同block的节点的列表
+                blocks_list = []
+                block_nodes = []
+                for _block in node.block_items:
+                    # print('------------------------')
+                    # _block.show()
+
+                    if not (self._is_end(_block) or self._is_new_block(_block)):
+                        block_nodes.append(_block)
+
+                    elif self._is_end(_block):
+                        block_nodes.append(_block)
+                        blocks_list.append(deepcopy(block_nodes))
+                        block_nodes.clear()
+
+                    elif self._is_new_block(_block):
+                        if len(block_nodes) != 0:
+                            blocks_list.append(deepcopy(block_nodes))
+                            block_nodes.clear()
+                        blocks_list.append([_block])
+                    else:
+                        pass
+                        # raise SyntaxError("node {} can't be dealt with!".format(type(_block)))
+
+                if len(block_nodes) != 0:
+                    blocks_list.append(deepcopy(block_nodes))
+
+                # test
+                print(len(blocks_list))
+                for item in blocks_list:
+                    print(str(len(item)))
+                    for i in item:
+                        print(str(type(i)))
+
+                # 对当前列表的每个item，递归调用
+                out_stmt = pres
+                flag = True
+                for item in blocks_list:
+                    tmp, out_stmt = self._gen_blocks(item, out_stmt)
+                    if flag:
+                        in_stmt = tmp
+                    print("new blocks for compound are {}".format(str(out_stmt)))
+
+                if sucs is not None:
+                    for suc in sucs:
+                        self.blocks[suc].pre = out_stmt
+
+                return in_stmt, out_stmt
+
+            if isinstance(node, c_ast.While):
+                cond_in, cond_out = self._gen_blocks([node.cond], pres, sucs)
+                # cond 即是stmt的前驱，也是stmt的后继
+                stmt_in, stmt_out = self._gen_blocks([node.stmt], cond_out, cond_in)
+                self.blocks[cond_out[0]].true_suc = stmt_in[0]
+                # 补充cond的后继
+                self.blocks[cond_out[0]].suc.extend(stmt_in)
+                return cond_in, cond_out
+
+            if isinstance(node, c_ast.DoWhile):
+                in_stmt, out_stmt = self._gen_blocks([node.stmt], pres)
+                # cond 即是stmt的前驱，也是stmt的后继
+                cond_in, cond_out = self._gen_blocks([node.cond], out_stmt, in_stmt)
+                print(">>>>>>>>>")
+                print(str(cond_in))
+                print(str(cond_out))
+                print(str(self.blocks.keys()))
+                # 补充stmt的后继
+                self.blocks[out_stmt[0]].suc = cond_in
+                self.blocks[cond_in[0]].true_suc = in_stmt[0]
+                # 补充cond的后继
+                if sucs is not None:
+                    self.blocks[cond_in[0]].suc.extend(sucs)
+                return in_stmt, cond_out
+
+            if isinstance(node, c_ast.If):
+                pass
+
+            if isinstance(node, c_ast.Label):
+                pass
+
+    def _get_blocks(self, compound: c_ast.Compound, symtab):
+        """
+        找到并生成一个node内的所有block
+        :param ast: node
         :return: blocks有向图，以entry开始，exit结束
         """
-        compound:c_ast.Compound = node.body
         st_fun = symtab.get_symtab_of(compound)
         print(st_fun)
 
@@ -76,6 +228,8 @@ class flow_graph(object):
             self.blocks[-1].pre = self.blocks[0].id
             return
 
+        # next_leaders： node类型 可以是label，if， while，dowhile
+        # gen_block
         next_leaders, cur_id = self.gen_block(compound.block_items[0])
         self.blocks[0].suc = cur_id
         self.blocks[cur_id].pre = self.blocks[0].id
@@ -86,6 +240,7 @@ class flow_graph(object):
             self.blocks[-1].pre = self.blocks[cur_id].id
 
         # 函数体有多个节点
+        # 以compound为单位做分析
         else:
             next_leaders = [[leader, cur_id] for leader in next_leaders]
             # bfs
@@ -105,37 +260,106 @@ class flow_graph(object):
                         total_next_leaders.extend([[leader, cur_id] for leader in new_leaders])
                 next_leaders = total_next_leaders
 
+    def _is_end(self, node: c_ast.Node):
+        """
+        判断当前节点是否是block的end,包括
+        :param node:
+        :return:它的下一个block的leaders，list   否则返回None
+        """
+        if isinstance(node, c_ast.Goto):
+            return True
+        if isinstance(node, c_ast.Return):
+            return True
+        return False
+
+    def _is_new_block(self, node: c_ast.Node):
+        if self.bof:
+            self.bof = False
+            return True
+        # rule 3  if
+        if isinstance(node, c_ast.If):
+            return True
+        # rule 3 while
+        if isinstance(node, c_ast.While):
+            return True
+        if isinstance(node, c_ast.DoWhile):
+            return True
+        # rule 2 goto
+        if isinstance(node, c_ast.Label):
+            return True
+        if isinstance(node, c_ast.Compound):
+            return True
+        return False
+
+
     def _is_leader(self, node: c_ast.Node):
         """
         :param node: 当前遍历ast的节点：c_ast.Node
         :return: bool 是否是leader(一个block的入口语句)
-        判断标准：来自王铎
+        判断标准：来自王铎，不严格
             1 程序的第一个语句
             2 能有条件转移语句或无条件跳转语句到达的语句
             3 紧跟在条件转移语句后面的语句
-        """
-        pass
 
-    def gen_block(self, u: c_ast.Node):
+        注意：if和while的cond单独作为block
+        """
+        # rule 1
+        if self.bof:
+            self.bof = False
+            return True
+        # rule 3  if
+        if isinstance(node, c_ast.If):
+            return True
+        # rule 3 while
+        if isinstance(node, c_ast.While):
+            return True
+        if isinstance(node, c_ast.DoWhile):
+            return True
+        # rule 2 goto
+        if isinstance(node, c_ast.Label):
+            return True
+        if isinstance(node, c_ast.Compound):
+            return True
+        return False
+
+    def gen_block(self, u:c_ast.Node):
         """
         当前节点是一个block的leader，顺序产生一个block，并返回后继leaders和生成的block的id
         :param u: node
         :return: list<Node>, id  因为一个block的出口可能有多个，用list
         """
+        if not self._is_leader(u):
+            raise SyntaxError('bad leader of block with id{}'.format(self.id_seed))
 
         return [], -1
 
 
-if __name__=='__main__':
-    file = '../c_file/ls1.c'
+
+if __name__ == '__main__':
+    file = '../c_file/ls2.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
     sts = symtab_store(ast)
-    # sts.show(ast)
+    """    
+    with open('../c_file/ls2_out.out', 'w') as f:
+        f.write(str(ast))
+    """
+    """
+    # python 的 = 对object对象是深拷贝，且连同拷贝子节点
+    node = ast.ext[2]
+    node.show()
+    print("--------------\n\n")
+    node = c_ast.IdentifierType(names=[])
+    node.show()
+    print("--------------\n\n")
+    ast.ext[2].show()
+    print("--------------\n\n")
+    """
 
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
             print('----------------------------------')
-            blocks = flow_graph(ch, sts)
+            blocks = FlowGraph(ch, sts)
+
 
