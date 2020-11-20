@@ -1,9 +1,11 @@
 int go = 1000;
 char ch = 'c';
 int main(int c, int d){
+
 int a = 1;
 int b = 0;
 int c = a + b;
+b = b + c;
 while(1);
 while(1) c ++;
 {int cc = a + b; cc += 2;}

@@ -81,6 +81,7 @@ class FlowGraph(object):
                     self.blocks[suc].pre.append(k)
 
     def show(self):
+        print("\n\nblocks are as follows: \n")
         for k in self.blocks.keys():
             print("id {},  pre: {}, suc: {}".format(self.blocks[k].id, self.blocks[k].pre, self.blocks[k].suc))
             for node in self.blocks[k].ast_nodes:
@@ -132,8 +133,8 @@ class FlowGraph(object):
                 blocks_list = []
                 block_nodes = []
                 for _block in node.block_items:
-                    print('------------------------')
-                    _block.show()
+                    # print('------------------------')
+                    # _block.show()
 
                     if not (self._is_end(_block) or self._is_new_block(_block)):
                         block_nodes.append(_block)
@@ -155,12 +156,13 @@ class FlowGraph(object):
                 if len(block_nodes) != 0:
                     blocks_list.append(deepcopy(block_nodes))
 
-                # test
+                """
                 print(len(blocks_list))
                 for item in blocks_list:
                     print(str(len(item)))
                     for i in item:
                         print(str(type(i)))
+                """
 
                 # 对当前列表的每个item，递归调用
                 out_stmt = deepcopy(pres)
@@ -213,8 +215,12 @@ class FlowGraph(object):
                 self.blocks[cond_out[0]].branch[iffalse_in[0]] = False
                 return cond_in, if_out
 
+            # Label
+            # Label的子节点是紧接着它的一个Node！！！！！！
             if isinstance(node, c_ast.Label):
-                pass
+                in_label, out_label = self._gen_blocks([node.stmt], pres, sucs)
+                self.labels[node.name] = in_label
+                return in_label, out_label
 
     def _is_end(self, node: c_ast.Node):
         """
@@ -343,6 +349,19 @@ class FlowGraph(object):
                 next_leaders = total_next_leaders
 
 
+def gen_ast_parents(node: c_ast.Node, map: dict()):
+    if isinstance(node, (tuple, list)):
+        for item in node:
+            for ch_name, ch in item.children():
+                # print(ch_name)
+                map[ch] = node
+                gen_ast_parents(ch, map)
+    else:
+        for ch_name, ch in node.children():
+            # print(ch_name)
+            map[ch] = node
+            gen_ast_parents(ch, map)
+
 
 
 if __name__ == '__main__':
@@ -351,10 +370,13 @@ if __name__ == '__main__':
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
     sts = symtab_store(ast)
+    # ast.show()
     """    
     with open('../c_file/ls2_out.out', 'w') as f:
         f.write(str(ast))
     """
+
+
     """
     # python 的 = 对object对象是深拷贝，且连同拷贝子节点
     node = ast.ext[2]
@@ -367,9 +389,15 @@ if __name__ == '__main__':
     print("--------------\n\n")
     """
 
+    # map记录了ast当中所有节点的父节点：字典类型
+    map = {}
+    gen_ast_parents(ast, map)
+    for item in map.keys():
+        print("{} : {}".format(type(item), type(map[item])))
+
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
-            print('----------------------------------')
+            print('--------------start to get flow graph--------------------')
             blocks = FlowGraph(ch, sts)
 
 
