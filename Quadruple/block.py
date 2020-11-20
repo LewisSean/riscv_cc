@@ -3,6 +3,7 @@ from pycparser import CParser
 from copy import deepcopy
 from riscv_cc.symtab import symtab_store, SymTab
 
+
 class Quadruple(object):
     def __init__(self, type, op, arg1, arg2, dest):
         # 四元组类型：0 / 1 / 2 / 3 / 4
@@ -39,6 +40,8 @@ class Block(object):
         self.in_live_vals = in_live_vals
         self.out_live_vals = out_live_vals
         self.branch = dict()
+        self.loop_end = None
+        self.name = ""
 
     def gen_quadruples(self, ast_nodes):
         return []
@@ -61,15 +64,16 @@ class FlowGraph(object):
         self.blocks[0] = Block(0, [])
         self.blocks[-1] = Block(-1, [])
         self.id_seed = 0
+        self.loop_seed = 0
         # 其余四元组的id范围: >= 1
         compound: c_ast.Compound = node.body
         self.symtab = symtab.get_symtab_of(compound)
         self.labels = {}
         self._gen_blocks([compound], [0], [-1])
-        # self._get_blocks(compound, symtab)
         self._complete_graph()
         self.show()
 
+    # 包括完善前驱后继以及回填
     def _complete_graph(self):
         for k in self.blocks.keys():
             for pre in self.blocks[k].pre:
@@ -80,10 +84,22 @@ class FlowGraph(object):
                 if k not in self.blocks[suc].pre:
                     self.blocks[suc].pre.append(k)
 
+        # 回填跳出循环的位置，针对break和continue
+        for k in self.blocks.keys():
+            for pre in self.blocks[k].pre:
+                if self.blocks[pre].name.startswith("cond"):
+                    loop_id = self.blocks[pre].name[self.blocks[pre].name.find("_") + 1:]
+                    _name = "loop_{}".format(loop_id)
+
+                    for i in self.blocks.keys():
+                        if self.blocks[i].name == _name:
+                            self.blocks[i].loop_end = k
+
     def show(self):
         print("\n\nblocks are as follows: \n")
         for k in self.blocks.keys():
             print("id {},  pre: {}, suc: {}".format(self.blocks[k].id, self.blocks[k].pre, self.blocks[k].suc))
+            print("name: {}, {}".format(self.blocks[k].name, self.blocks[k].loop_end))
             for node in self.blocks[k].ast_nodes:
                 print(str(type(node)))
             print('..................................')
@@ -94,6 +110,13 @@ class FlowGraph(object):
         """
         self.id_seed += 1
         return self.id_seed
+
+    def _get_loop_id(self):
+        """
+        :return: 一个新的loop部分的loopid
+        """
+        self.loop_seed += 1
+        return self.loop_seed
 
     def _gen_blocks(self, nodes: list, pres: list, sucs: list = None):
         """
@@ -180,20 +203,36 @@ class FlowGraph(object):
 
                 return in_stmt, out_stmt
 
+            # 处理While
             if isinstance(node, c_ast.While):
+                loop_id = self._get_loop_id()
+                # 生成cond的block
                 cond_in, cond_out = self._gen_blocks([node.cond], pres, sucs)
+                self.blocks[cond_in[0]].name = "cond_"+str(loop_id)
+
+                # 生成stmt的block
                 # cond 即是stmt的前驱，也是stmt的后继
                 stmt_in, stmt_out = self._gen_blocks([node.stmt], cond_out, cond_in)
+                _name = "loop_{}".format(loop_id)
+                for id in range(stmt_in[0], stmt_out[0] + 1):
+                    self.blocks[id].name = _name
                 # 分支选择
                 self.blocks[cond_out[0]].branch[stmt_in[0]] = True
                 # 补充cond的后继
                 self.blocks[cond_out[0]].suc.extend(stmt_in)
                 return cond_in, cond_out
 
+            # 处理DoWhile
             if isinstance(node, c_ast.DoWhile):
+                loop_id = self._get_loop_id()
+
                 in_stmt, out_stmt = self._gen_blocks([node.stmt], pres)
-                # cond 即是stmt的前驱，也是stmt的后继
+                _name = "loop_{}".format(loop_id)
+                for id in range(in_stmt[0], out_stmt[0] + 1):
+                    self.blocks[id].name = _name
+
                 cond_in, cond_out = self._gen_blocks([node.cond], out_stmt, in_stmt)
+                self.blocks[cond_in[0]].name = "cond_" + str(loop_id)
 
                 # 补充stmt的后继
                 self.blocks[out_stmt[0]].suc = cond_in
@@ -204,6 +243,7 @@ class FlowGraph(object):
                     self.blocks[cond_out[0]].suc.extend(sucs)
                 return in_stmt, cond_out
 
+            # 处理If
             if isinstance(node, c_ast.If):
                 cond_in, cond_out = self._gen_blocks([node.cond], pres)
                 iftrue_in, iftrue_out = self._gen_blocks([node.iftrue], cond_out, sucs)
@@ -349,7 +389,7 @@ class FlowGraph(object):
                 next_leaders = total_next_leaders
 
 
-def gen_ast_parents(node: c_ast.Node, map: dict()):
+def gen_ast_parents(node: c_ast.Node, map: dict):
     if isinstance(node, (tuple, list)):
         for item in node:
             for ch_name, ch in item.children():
@@ -363,14 +403,13 @@ def gen_ast_parents(node: c_ast.Node, map: dict()):
             gen_ast_parents(ch, map)
 
 
-
 if __name__ == '__main__':
     file = '../c_file/ls2.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
     sts = symtab_store(ast)
-    # ast.show()
+
     """    
     with open('../c_file/ls2_out.out', 'w') as f:
         f.write(str(ast))
@@ -395,6 +434,7 @@ if __name__ == '__main__':
     for item in map.keys():
         print("{} : {}".format(type(item), type(map[item])))
 
+    # 对FuncDef节点建立block有向图
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
