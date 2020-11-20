@@ -1,9 +1,9 @@
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
-from riscv_cc.symtab import symtab_store, SymTab
-from riscv_cc.Quadruple.quadruple import Quadruple
-from riscv_cc.Quadruple.block import Block
+from symtab import symtab_store, SymTab
+from Quadruple.quadruple import Quadruple
+from Quadruple.block import Block
 
 
 class FlowGraph(object):
@@ -234,27 +234,6 @@ class FlowGraph(object):
         return False
 
     def _is_new_block(self, node: c_ast.Node):
-        if self.bof:
-            self.bof = False
-            return True
-        # rule 3  if
-        if isinstance(node, c_ast.If):
-            return True
-        # rule 3 while
-        if isinstance(node, c_ast.While):
-            return True
-        if isinstance(node, c_ast.DoWhile):
-            return True
-        # rule 2 goto
-        if isinstance(node, c_ast.Label):
-            return True
-        if isinstance(node, c_ast.Compound):
-            return True
-        return False
-
-
-
-    def _is_leader(self, node: c_ast.Node):
         """
         :param node: 当前遍历ast的节点：c_ast.Node
         :return: bool 是否是leader(一个block的入口语句)
@@ -265,7 +244,6 @@ class FlowGraph(object):
 
         注意：if和while的cond单独作为block
         """
-        # rule 1
         if self.bof:
             self.bof = False
             return True
@@ -283,70 +261,6 @@ class FlowGraph(object):
         if isinstance(node, c_ast.Compound):
             return True
         return False
-
-    def gen_block(self, u:c_ast.Node):
-        """
-        当前节点是一个block的leader，顺序产生一个block，并返回后继leaders和生成的block的id
-        :param u: node
-        :return: list<Node>, id  因为一个block的出口可能有多个，用list
-        """
-        if not self._is_leader(u):
-            raise SyntaxError('bad leader of block with id{}'.format(self.id_seed))
-
-        return [], -1
-
-    def _get_blocks(self, compound: c_ast.Compound, symtab):
-        """
-        找到并生成一个node内的所有block
-        :param ast: node
-        :return: blocks有向图，以entry开始，exit结束
-        """
-        st_fun = symtab.get_symtab_of(compound)
-        print(st_fun)
-
-        # 注意，compound.block_items的粒度太小！！！
-        for _block in compound.block_items:
-            print('------------------------')
-            _block.show()
-
-        # 函数体内为空
-        if len(compound.block_items) == 0:
-            self.blocks[0].suc = self.blocks[-1].id
-            self.blocks[-1].pre = self.blocks[0].id
-            return
-
-        # next_leaders： node类型 可以是label，if， while，dowhile
-        # gen_block
-        next_leaders, cur_id = self.gen_block(compound.block_items[0])
-        self.blocks[0].suc = cur_id
-        self.blocks[cur_id].pre = self.blocks[0].id
-
-        # 函数体仅一个节点，无后继
-        if len(next_leaders) == 0:
-            self.blocks[cur_id].suc = self.blocks[-1].id
-            self.blocks[-1].pre = self.blocks[cur_id].id
-
-        # 函数体有多个节点
-        # 以compound为单位做分析
-        else:
-            next_leaders = [[leader, cur_id] for leader in next_leaders]
-            # bfs
-            while len(next_leaders) != 0:
-                total_next_leaders = []
-                for leader, parent_id in next_leaders:
-                    # 由parent_id的block产生的后继
-                    new_leaders, cur_id = self.gen_block(leader)
-                    self.blocks[parent_id].suc = cur_id
-                    self.blocks[cur_id].pre = parent_id
-                    # 新产生的cur_id的block无后继
-                    if len(new_leaders) == 0:
-                        self.blocks[cur_id].suc = self.blocks[-1].id
-                        self.blocks[-1].pre = cur_id
-                    # cur_id的block有后继
-                    else:
-                        total_next_leaders.extend([[leader, cur_id] for leader in new_leaders])
-                next_leaders = total_next_leaders
-
 
 def gen_ast_parents(node: c_ast.Node, map: dict):
     if isinstance(node, (tuple, list)):
