@@ -24,12 +24,12 @@ class Block(object):
             Quadruples = []
         self.id = id
         if pre is not None:
-            self.pre = pre
+            self.pre = deepcopy(pre)
         else:
             self.pre = []
 
         if suc is not None:
-            self.suc = suc
+            self.suc = deepcopy(suc)
         else:
             self.suc = []
 
@@ -38,7 +38,7 @@ class Block(object):
         self.Quadruples = Quadruples
         self.in_live_vals = in_live_vals
         self.out_live_vals = out_live_vals
-        self.true_suc = None
+        self.branch = dict()
 
     def gen_quadruples(self, ast_nodes):
         return []
@@ -75,7 +75,7 @@ class FlowGraph(object):
             for pre in self.blocks[k].pre:
                 if k not in self.blocks[pre].suc:
                     self.blocks[pre].suc.append(k)
-
+        for k in self.blocks.keys():
             for suc in self.blocks[k].suc:
                 if k not in self.blocks[suc].pre:
                     self.blocks[suc].pre.append(k)
@@ -132,8 +132,8 @@ class FlowGraph(object):
                 blocks_list = []
                 block_nodes = []
                 for _block in node.block_items:
-                    # print('------------------------')
-                    # _block.show()
+                    print('------------------------')
+                    _block.show()
 
                     if not (self._is_end(_block) or self._is_new_block(_block)):
                         block_nodes.append(_block)
@@ -163,17 +163,18 @@ class FlowGraph(object):
                         print(str(type(i)))
 
                 # 对当前列表的每个item，递归调用
-                out_stmt = pres
+                out_stmt = deepcopy(pres)
                 flag = True
                 for item in blocks_list:
                     tmp, out_stmt = self._gen_blocks(item, out_stmt)
                     if flag:
-                        in_stmt = tmp
+                        in_stmt = deepcopy(tmp)
+                        flag = False
                     print("new blocks for compound are {}".format(str(out_stmt)))
 
                 if sucs is not None:
                     for suc in sucs:
-                        self.blocks[suc].pre = out_stmt
+                        self.blocks[suc].pre.extend(out_stmt)
 
                 return in_stmt, out_stmt
 
@@ -181,7 +182,8 @@ class FlowGraph(object):
                 cond_in, cond_out = self._gen_blocks([node.cond], pres, sucs)
                 # cond 即是stmt的前驱，也是stmt的后继
                 stmt_in, stmt_out = self._gen_blocks([node.stmt], cond_out, cond_in)
-                self.blocks[cond_out[0]].true_suc = stmt_in[0]
+                # 分支选择
+                self.blocks[cond_out[0]].branch[stmt_in[0]] = True
                 # 补充cond的后继
                 self.blocks[cond_out[0]].suc.extend(stmt_in)
                 return cond_in, cond_out
@@ -190,23 +192,103 @@ class FlowGraph(object):
                 in_stmt, out_stmt = self._gen_blocks([node.stmt], pres)
                 # cond 即是stmt的前驱，也是stmt的后继
                 cond_in, cond_out = self._gen_blocks([node.cond], out_stmt, in_stmt)
-                print(">>>>>>>>>")
-                print(str(cond_in))
-                print(str(cond_out))
-                print(str(self.blocks.keys()))
+
                 # 补充stmt的后继
                 self.blocks[out_stmt[0]].suc = cond_in
-                self.blocks[cond_in[0]].true_suc = in_stmt[0]
+                # cond的分支选择
+                self.blocks[cond_out[0]].branch[in_stmt[0]] = True
                 # 补充cond的后继
                 if sucs is not None:
-                    self.blocks[cond_in[0]].suc.extend(sucs)
+                    self.blocks[cond_out[0]].suc.extend(sucs)
                 return in_stmt, cond_out
 
             if isinstance(node, c_ast.If):
-                pass
+                cond_in, cond_out = self._gen_blocks([node.cond], pres)
+                iftrue_in, iftrue_out = self._gen_blocks([node.iftrue], cond_out, sucs)
+                iffalse_in, iffalse_out = self._gen_blocks([node.iffalse], cond_out, sucs)
+                if_out = iftrue_out + iffalse_out
+
+                # cond的分支选择
+                self.blocks[cond_out[0]].branch[iftrue_in[0]] = True
+                self.blocks[cond_out[0]].branch[iffalse_in[0]] = False
+                return cond_in, if_out
 
             if isinstance(node, c_ast.Label):
                 pass
+
+    def _is_end(self, node: c_ast.Node):
+        """
+        判断当前节点是否是block的end,包括
+        :param node:
+        :return:它的下一个block的leaders，list   否则返回None
+        """
+        if isinstance(node, c_ast.Goto):
+            return True
+        if isinstance(node, c_ast.Return):
+            return True
+        return False
+
+    def _is_new_block(self, node: c_ast.Node):
+        if self.bof:
+            self.bof = False
+            return True
+        # rule 3  if
+        if isinstance(node, c_ast.If):
+            return True
+        # rule 3 while
+        if isinstance(node, c_ast.While):
+            return True
+        if isinstance(node, c_ast.DoWhile):
+            return True
+        # rule 2 goto
+        if isinstance(node, c_ast.Label):
+            return True
+        if isinstance(node, c_ast.Compound):
+            return True
+        return False
+
+
+
+    def _is_leader(self, node: c_ast.Node):
+        """
+        :param node: 当前遍历ast的节点：c_ast.Node
+        :return: bool 是否是leader(一个block的入口语句)
+        判断标准：来自王铎，不严格
+            1 程序的第一个语句
+            2 能有条件转移语句或无条件跳转语句到达的语句
+            3 紧跟在条件转移语句后面的语句
+
+        注意：if和while的cond单独作为block
+        """
+        # rule 1
+        if self.bof:
+            self.bof = False
+            return True
+        # rule 3  if
+        if isinstance(node, c_ast.If):
+            return True
+        # rule 3 while
+        if isinstance(node, c_ast.While):
+            return True
+        if isinstance(node, c_ast.DoWhile):
+            return True
+        # rule 2 goto
+        if isinstance(node, c_ast.Label):
+            return True
+        if isinstance(node, c_ast.Compound):
+            return True
+        return False
+
+    def gen_block(self, u:c_ast.Node):
+        """
+        当前节点是一个block的leader，顺序产生一个block，并返回后继leaders和生成的block的id
+        :param u: node
+        :return: list<Node>, id  因为一个block的出口可能有多个，用list
+        """
+        if not self._is_leader(u):
+            raise SyntaxError('bad leader of block with id{}'.format(self.id_seed))
+
+        return [], -1
 
     def _get_blocks(self, compound: c_ast.Compound, symtab):
         """
@@ -260,78 +342,6 @@ class FlowGraph(object):
                         total_next_leaders.extend([[leader, cur_id] for leader in new_leaders])
                 next_leaders = total_next_leaders
 
-    def _is_end(self, node: c_ast.Node):
-        """
-        判断当前节点是否是block的end,包括
-        :param node:
-        :return:它的下一个block的leaders，list   否则返回None
-        """
-        if isinstance(node, c_ast.Goto):
-            return True
-        if isinstance(node, c_ast.Return):
-            return True
-        return False
-
-    def _is_new_block(self, node: c_ast.Node):
-        if self.bof:
-            self.bof = False
-            return True
-        # rule 3  if
-        if isinstance(node, c_ast.If):
-            return True
-        # rule 3 while
-        if isinstance(node, c_ast.While):
-            return True
-        if isinstance(node, c_ast.DoWhile):
-            return True
-        # rule 2 goto
-        if isinstance(node, c_ast.Label):
-            return True
-        if isinstance(node, c_ast.Compound):
-            return True
-        return False
-
-
-    def _is_leader(self, node: c_ast.Node):
-        """
-        :param node: 当前遍历ast的节点：c_ast.Node
-        :return: bool 是否是leader(一个block的入口语句)
-        判断标准：来自王铎，不严格
-            1 程序的第一个语句
-            2 能有条件转移语句或无条件跳转语句到达的语句
-            3 紧跟在条件转移语句后面的语句
-
-        注意：if和while的cond单独作为block
-        """
-        # rule 1
-        if self.bof:
-            self.bof = False
-            return True
-        # rule 3  if
-        if isinstance(node, c_ast.If):
-            return True
-        # rule 3 while
-        if isinstance(node, c_ast.While):
-            return True
-        if isinstance(node, c_ast.DoWhile):
-            return True
-        # rule 2 goto
-        if isinstance(node, c_ast.Label):
-            return True
-        if isinstance(node, c_ast.Compound):
-            return True
-        return False
-
-    def gen_block(self, u:c_ast.Node):
-        """
-        当前节点是一个block的leader，顺序产生一个block，并返回后继leaders和生成的block的id
-        :param u: node
-        :return: list<Node>, id  因为一个block的出口可能有多个，用list
-        """
-        if not self._is_leader(u):
-            raise SyntaxError('bad leader of block with id{}'.format(self.id_seed))
-
-        return [], -1
 
 
 

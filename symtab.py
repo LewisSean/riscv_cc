@@ -377,6 +377,9 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def goto(u):
         pass
 
+    @register('UnaryOp')
+    def unaryOp(u):
+        pass
 
     dfs(ast)
     return sts
