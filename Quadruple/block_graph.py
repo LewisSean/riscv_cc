@@ -16,20 +16,25 @@ class FlowGraph(object):
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
 
-        # ast的所有节点的直接父节点存在map中
+        # ast的所有节点的直接父节点存在map中，为了通过符号逐层往上匹配符号表树
         self.map = map
-        # bof 函数体的开始
+        # bof 函数体的开始，用于判断是否是一个新的block开始，_is_new_block()用到
         self.bof = True
         # 增设entry和exit两个block(不包含实际四元组)，id分别为0和-1
         self.blocks = dict()
         self.blocks[0] = Block(0, [])
         self.blocks[-1] = Block(-1, [])
+        # block的id生成种子，自增生成id
         self.id_seed = 0
+        # 一个循环体内的同级block共享相同的循环体id
+        # （注：循环嵌套，则内循环block共享一个id1，外循环中非内循环的其他block共享另一个id2，为了break的正确跳出）
         self.loop_seed = 0
         # 其余四元组的id范围: >= 1
         compound: c_ast.Compound = node.body
         self.symtab = symtab.get_symtab_of(compound)
+        # 字典，保存goto的label的映射，如labels['L1'] = 10 表示 goto L1是跳转到block 10
         self.labels = {}
+        # 生成block有向图的核心函数
         self._gen_blocks([compound], [0], [-1])
         self._complete_graph()
         self.show()
@@ -232,7 +237,7 @@ class FlowGraph(object):
                 self.labels[node.name] = in_label
                 return in_label, out_label
 
-            # Switch
+            # Switch 未完待续
             if isinstance(node, c_ast.Switch):
                 
                 pass
