@@ -6,10 +6,10 @@ int b = a + c;
 
 while( a < 0 ){
 a = a + 1;
-while(b > 0){
-b = b - 1;
-c = c - 1;
-}
+    while(b > 0){
+    b = b - 1;
+    c = c - 1;
+    }
 b = b + c;
 }
 
@@ -33,6 +33,7 @@ L1:
 do{
 c = c + 1;
 a = a +1;
+break;
 }while(b > 100);
 b = b + 1;
 c = b + 1;

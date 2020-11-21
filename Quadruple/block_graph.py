@@ -61,11 +61,25 @@ class FlowGraph(object):
                         if self.blocks[i].name == _name:
                             self.blocks[i].loop_end = k
 
+        # 回填branch
+        for k in self.blocks.keys():
+            if len(self.blocks[k].branch) != 0:
+                for b in self.blocks[k].suc:
+                    if b not in self.blocks[k].branch.keys():
+                        self.blocks[k].branch[b] = False
+
+
     def show(self):
         print("\n\nblocks are as follows: \n")
         for k in self.blocks.keys():
             print("id {},  pre: {}, suc: {}".format(self.blocks[k].id, self.blocks[k].pre, self.blocks[k].suc))
-            print("name: {}, {}".format(self.blocks[k].name, self.blocks[k].loop_end))
+            if self.blocks[k].name != "":
+                print("name: {}, {}".format(self.blocks[k].name, self.blocks[k].loop_end))
+            if self.blocks[k].branch != dict():
+                print("branch>>>>")
+                for key in self.blocks[k].branch:
+                    print("if {}: goto block {}".format(self.blocks[k].branch[key], key))
+            print("nodes>>>>")
             for node in self.blocks[k].ast_nodes:
                 print(str(type(node)))
             print('..................................')
@@ -87,7 +101,7 @@ class FlowGraph(object):
     def _gen_blocks(self, nodes: list, pres: list, sucs: list = None, loop_id=-1):
         """
         递归函数，产生当前节点(们)的所有block
-        :param node: 当前节点列表
+        :param nodes: 当前节点列表
         :param pres: 前驱节点id的列表
         :param sucs: 后继节点id的列表
         :param loop_id: 传递进入循环的loop_id
