@@ -1,4 +1,5 @@
-int main(){
+int gogo = 10000;
+int main(int aa, int bb){
 
 int a = 100;
 int c = 200;

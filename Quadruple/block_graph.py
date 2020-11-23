@@ -1,8 +1,7 @@
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
-from symtab import symtab_store, SymTab
-from Quadruple.quadruple import Quadruple
+from symtab import symtab_store, SymTab, SymTabStore
 from Quadruple.block import Block
 
 
@@ -11,7 +10,7 @@ class FlowGraph(object):
     获取的是一个函数的流图
     所以入口节点应该是FuncDef
     """
-    def __init__(self, node: c_ast.FuncDef, symtab: symtab_store, map: dict):
+    def __init__(self, node: c_ast.FuncDef, symtab: SymTabStore, map: dict):
 
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
@@ -31,7 +30,7 @@ class FlowGraph(object):
         self.loop_seed = 0
         # 其余四元组的id范围: >= 1
         compound: c_ast.Compound = node.body
-        self.symtab = symtab.get_symtab_of(compound)
+        self.symtab = symtab
         # 字典，保存goto的label的映射，如labels['L1'] = 10 表示 goto L1是跳转到block 10
         self.labels = {}
         # 生成block有向图的核心函数
@@ -110,7 +109,7 @@ class FlowGraph(object):
         # 如果当前节点数大于1，则说明这些节点是可以组成一个block的
         if len(nodes) > 1:
             new_id = self._get_id()
-            self.blocks[new_id] = Block(new_id, nodes, pres, sucs)
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
 
@@ -119,7 +118,7 @@ class FlowGraph(object):
         # 单个节点，且自组成一个block
         elif not self._is_new_block(nodes[0]):
             new_id = self._get_id()
-            self.blocks[new_id] = Block(new_id, nodes, pres, sucs)
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
 
@@ -133,7 +132,7 @@ class FlowGraph(object):
                 # 列表为空
                 if len(node.block_items) == 0:
                     new_id = self._get_id()
-                    self.blocks[new_id] = Block(new_id, [], pres, sucs)
+                    self.blocks[new_id] = Block(new_id, [], pres, sucs, self.symtab)
 
                     return [new_id], [new_id]
 
@@ -180,7 +179,7 @@ class FlowGraph(object):
                     if flag:
                         in_stmt = deepcopy(tmp)
                         flag = False
-                    print("new blocks for compound are {}".format(str(out_stmt)))
+                    # print("new blocks for compound are {}".format(str(out_stmt)))
 
                 if sucs is not None:
                     for suc in sucs:
@@ -313,18 +312,25 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    file = '../c_file/ls2.c'
+    file = '../c_file/ls3.c'
     parser = CParser()
-    with open(file,'r') as f:
+    with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)
+        # ast.show()
+        # with open('../c_file/ls3_out.out', 'w') as f:
+        #    f.write(str(ast))
+
     sts = symtab_store(ast)
-
-    """    
-    with open('../c_file/ls2_out.out', 'w') as f:
-        f.write(str(ast))
-    """
-
-
+    sts.show(ast)
+    '''
+    无差异，可以运行
+    new = ast
+    t: SymTab = sts.get_symtab_of(new)
+    print(t)
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    t: SymTab = sts.get_symtab_of(ast)
+    print(t)
+    '''
     """
     # python 的 = 对object对象是深拷贝，且连同拷贝子节点
     node = ast.ext[2]
@@ -340,8 +346,8 @@ if __name__ == '__main__':
     # map记录了ast当中所有节点的父节点：字典类型
     map = {}
     gen_ast_parents(ast, map)
-    for item in map.keys():
-        print("{} : {}".format(type(item), type(map[item])))
+    # for item in map.keys():
+    #     print("{} : {}".format(type(item), type(map[item])))
 
     # 对FuncDef节点建立block有向图
     for ch in ast.ext:

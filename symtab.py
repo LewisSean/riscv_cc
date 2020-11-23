@@ -9,7 +9,7 @@ class Symbol():
 
     def __repr__(self):
         return '%s,sz=%d,off=%d'%(self.name,self.size,self.offset)
-        
+
 class SymTab(dict):
     def __init__(self, node:c_ast.Node, parent=None):
         self.node = node
@@ -355,7 +355,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('Assignment')
     def assign(u):
-        pass
+        dfs(u.rvalue)
+        dfs(u.lvalue)
 
     @register('While')
     def While(u):
@@ -379,6 +380,22 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('UnaryOp')
     def unaryOp(u):
+        pass
+
+    @register('ID')
+    def id(u):
+        pass
+
+    @register('Constant')
+    def Constant(u):
+        pass
+
+    @register('TernaryOp')
+    def TernaryOp(u):
+        pass
+
+    @register('BinaryOp')
+    def BinaryOp(u):
         pass
 
     dfs(ast)

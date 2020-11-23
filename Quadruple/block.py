@@ -1,14 +1,14 @@
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
-from symtab import symtab_store, SymTab
+from symtab import symtab_store, SymTab, SymTabStore
 from Quadruple.quadruple import Quadruple
-
+import re
 
 class Block(object):
-    def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, Quadruples: list = [], in_live_vals: list = [], out_live_vals: list = []):
+    def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, symtab:SymTabStore = None, Quadruples: list = None):
         if Quadruples is None:
-            Quadruples = []
+            self.Quadruples = []
         self.id = id
         if pre is not None:
             self.pre = deepcopy(pre)
@@ -21,9 +21,9 @@ class Block(object):
             self.suc = []
 
         self.ast_nodes = ast_nodes
-        self.Quadruples = self.gen_quadruples(ast_nodes)
-        self.in_live_vals = in_live_vals
-        self.out_live_vals = out_live_vals
+        self.gen_quadruples(ast_nodes, symtab, self.Quadruples)
+        self.in_live_vals = []
+        self.out_live_vals = []
         # branch是一个字典，branch[1] = True 表示block如果计算为True,后继block的id是1，用于处理iF.cond和while.cond节点
         self.branch = dict()
         # 如果当前的block是循环体的stmt中的一个block，则loop_end保存从它跳出循环的下一个block的id，用于break
@@ -31,7 +31,7 @@ class Block(object):
         # block的命名，cond_id表示是循环体id的判断节点，loop_id表示是循环体id的循环块（多个位于相同循环体内的block共享一个循环体id）
         self.name = ""
 
-    def gen_quadruples(self, ast_nodes):
+    def gen_quadruples(self, ast_nodes: list, symtab: SymTabStore, res: list):
         """
         四元组： op arg1 arg2 dest
         生成四元组的要求：
@@ -69,7 +69,46 @@ class Block(object):
             =[] x y z  (z = x[y])
 
         """
+        for node in ast_nodes:
+            # node.show()
+            expr(node, symtab, res)
         return []
+
+def expr(node: c_ast.Node, symtab: SymTabStore, res: list):
+    """
+    返回arg1, arg2, dest,     (四元组的符号，类型)
+    """
+    arg1 = None
+    arg2 = None
+    dest = None
+    if isinstance(node, c_ast.Assignment):
+        """
+        先处理rvalue，处理lvalue，再执行赋值运算
+        ch_name: 
+            lvalue  ID/StructRef/ArrayRef/UnaryOp( *k = 100 )
+            rvalue  UnaryOp/BinaryOp/Constant/ID/StructRef( p.x  p->x )/ArrayRef( a[100] ) /TernaryOp(= ? a:b)
+            注意：枚举类型中的元素都是ID
+        """
+        for ch_name, ch in node.children():
+            print(ch_name, str(type(ch)))
+            if ch_name == 'rvalue':
+                # 叶节点
+                if isinstance(ch, (c_ast.Constant,)):
+                    ch.show(attrnames=True, nodenames=True, showcoord=True)
+                    '''
+                    # 八进制转换
+                    if ch.type == 'int' and re.match(r'0[0-9]+', ch.value) is not None:
+                        ch.value = '0o'+ch.value[1:]
+                    
+                    '''
+                    return arg1, arg2, (ch.value, ch.type)
+
+                elif isinstance(ch, (c_ast.ID,)):
+                    t: SymTab = symtab.get_symtab_of(ch)
+                    sym = t.get_symbol(ch.name)
+                    return arg1, arg2, (ch.name, sym)
+
+
 
 
 
