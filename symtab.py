@@ -1,14 +1,71 @@
 from pycparser import c_ast
 from pycparser import CParser
 
+class OFFSET():
+    GLOBAL = 'global' # 全局偏移 (一个c源文件中的全局变量)
+    LOCAL = 'local' # 局部偏移 (局部变量\struct成员变量)
+
 class Symbol():
-    def __init__(self, name):
+    def __init__(self, name, size=0, offset=0, offset_type=OFFSET.GLOBAL, type_str=None):
         self.name = name
-        self.size = 0 # 以byte计
-        self.offset = 0 # 以byte计
+        self.size = size # 以byte计
+        self.offset = offset # 以byte计
+        self.offset_type = offset_type # 取值为OFFSET中的常量
+        self.type = type_str
 
     def __repr__(self):
-        return '%s,sz=%d,off=%d'%(self.name,self.size,self.offset)
+        return '%s,sz=%d,off=%d(%s),type=%s'%(
+            self.name,self.size,self.offset,self.offset_type,self.type)
+
+class BasicSymbol(Symbol):
+    '''
+    基本类型 int short long bool char 等
+    '''
+    SIZE_OF = {
+        'long long':8,
+        'long long int':8,
+        'long':4,
+        'long int':4,
+        'signed':4,
+        'unsigned':4,
+        'short int':2,
+        'short':2,
+        'char':1,
+        'bool':1
+    }
+    
+    @staticmethod
+    def gen_symbol(name:str, type_str:str):
+        '''
+        若type_str描述的不是一个基本类型则返回None
+        '''
+        try:
+            return BasicSymbol(name, type_str)
+        except NotImplementedError:
+            return None
+
+    def __init__(self, name, type_str:str):
+        super().__init__(name)
+        a = type_str.split(' ')
+        self.unsigned = False
+        if a[0] == 'unsigned':
+            self.unsigned = True
+            if len(a) > 1:
+                a=a[1:]
+        a = ' '.join(a)
+        szof = BasicSymbol.SIZE_OF
+        if szof.get(a) is None:
+            raise NotImplementedError('类型"'+a+'"尚不支持')
+        self.size = szof[a]
+        self.type = a
+
+    def __repr__(self):
+        ans = super().__repr__()
+        if self.unsigned:
+            ans+='(u)'
+        return ans
+
+    
 
 class SymTab(dict):
     def __init__(self, node:c_ast.Node, parent=None):
@@ -48,6 +105,7 @@ class StructSymbol(Symbol):
     '''
     def __init__(self, name):
         super().__init__(name)
+        self.offset_type = OFFSET.LOCAL
         self.member_symtab = SymTab(None)
 
     def get_member_symbol(self, name:str) -> Symbol:
@@ -74,7 +132,6 @@ class FuncSymbol(Symbol):
     def __init__(self, name):
         super().__init__(name)
         self.params_symtab = SymTab(None)
-        self.locals_symtab = SymTab(None)
         self.frame_size = None
 
     def add_param_symbol(self, sym:Symbol):
@@ -88,6 +145,23 @@ class FuncSymbol(Symbol):
         ans+=',params=['+params[:-1]+'],frame_sz='+str(self.frame_size)
         return ans
 
+class PointerSymbol(Symbol):
+    '''
+    指针符号
+    size: 指针的大小,所有指针的大小都是固定的4byte
+    target_size: 指向的元素的大小
+    '''
+    def __init__(self, name, target_size, target_offset=None, offset_type=None):
+        super().__init__(name)
+        self.target_size = target_size
+        self.size = 4
+    
+    def __repr__(self):
+        ans = super().__repr__()
+        ans += ',t_sz=%d'%self.target_size
+        return ans
+
+    
 class SymTabStore():
     def __init__(self):
         self._symtab={} # dict[c_ast.Node]->SymTab
@@ -201,13 +275,25 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         if type_name == 'FuncDecl':
             return dfs(u.type)
 
-        res = dfs(u.type)
-
-        if u.name is not None:
-            x = Symbol(u.name)
-            x.size = res['size']
+        if type_name == 'PtrDecl':
+            x = dfs(u.type)['pointer_symbol']
             x.offset = offset
             offset += x.size
+            if in_func: x.offset_type = OFFSET_LOCAL
+            return {'symbol':x}
+
+        res = dfs(u.type)
+
+        # 仅定义结构体而不声明变量则name=None
+        if u.name is not None:
+            x = BasicSymbol.gen_symbol(u.name, res['type'])
+            if x is None:
+                x = Symbol(u.name, size=res['size'], type_str=res['type'])
+            else:
+                a = 'haha'
+            x.offset = offset
+            offset += x.size
+            if in_func: x.offset_type = OFFSET_LOCAL
 
         struct_symbol = None
         if res.get('struct_symbol') is not None:
@@ -229,9 +315,10 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
         # 使用一个struct,而不是定义它
         t = sts.get_symtab_of(u)
+        type_str = 'struct '+u.name
         if u.decls is None:
-            sym = t.get_symbol('struct '+u.name)
-            return {'size':sym.size}
+            sym = t.get_symbol(type_str)
+            return {'size':sym.size,'type':type_str}
 
         # 定义一个struct
         saved_offset = offset
@@ -239,12 +326,13 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         in_struct = True
 
         size = 0
-        struct_symbol = StructSymbol('struct '+u.name)
+        struct_symbol = StructSymbol(type_str)
         for d in u.decls:
             res = dfs(d) 
             if res.get('struct_symbol') is not None:
                 t.add_symbol(res['struct_symbol'])
             x = res['symbol']
+            x.offset_type = OFFSET.LOCAL
             struct_symbol.add_member_symbol(x)
             size += x.size
 
@@ -253,7 +341,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         in_struct = False
         offset = saved_offset
 
-        return {'size':size, 'struct_symbol':struct_symbol}
+        return {'size':size, 'struct_symbol':struct_symbol, 'type':type_str}
 
     @register('TypeDecl')
     def type_decl(u:c_ast.TypeDecl) -> dict:
@@ -265,21 +353,14 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         return:
             size: 符号的size,以byte计
         '''
-        # 将列表中的字符串以空格分割拼接起来s,
-        # 若以unsigned开头,则忽略unsigned(因为对计算size来说无所谓)
-        id = ' '.join(u.names[1:] if u.names[0]=='unsigned' else u.names) 
-        type_size = {
-            'void' : 0,
-            'char' : 1,
-            'short' : 2,
-            'int' : 4,
-            'long' : 4,
-            'long long' : 8
-        }
-        if type_size.get(id) is None:
-            raise NotImplementedError('类型'+id+'尚不支持')
+        type_str = ' '.join(u.names)
 
-        return {'size' : type_size[id]}
+        x = BasicSymbol.gen_symbol('test',type_str)
+
+        if x is None:
+            raise NotImplementedError('类型"'+type_str+'"尚不支持')
+
+        return {'size' : x.size, 'type' : type_str}
 
     @register('FuncDecl')
     def func_decl(u:c_ast.FuncDecl):
@@ -299,7 +380,9 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def paramlist(u:c_ast.ParamList):
         symbols = []
         for d in u.params: # d是Decl类型
-            symbols.append(dfs(d)['symbol'])
+            x = dfs(d)['symbol']
+            x.offset_type = OFFSET.LOCAL
+            symbols.append(x)
         return {'param_symbols':symbols}
     
     @register('Compound')
@@ -353,6 +436,25 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         dfs(u.iftrue)
         dfs(u.iffalse)
 
+    @register('PtrDecl')
+    def ptr_decl(u:c_ast.PtrDecl):
+        '''
+        返回
+        pointer_symbol: 一个PointerSymbol,没有offset,offset交由上级的Decl设置
+        '''
+        res = dfs(u.type)
+
+        name = u.type.declname
+        target_size = res['size']
+
+        psym = PointerSymbol(name,target_size)
+        return {'pointer_symbol':psym}
+        
+    @register('ArrayDecl')
+    def array_decl(u:c_ast.ArrayDecl):
+        pass
+
+
     @register('Assignment')
     def assign(u):
         dfs(u.rvalue)
@@ -379,11 +481,11 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         pass
 
     @register('UnaryOp')
-    def unaryOp(u):
+    def unaryOp(u:c_ast.UnaryOp):
         pass
 
     @register('ID')
-    def id(u):
+    def id(u:c_ast.ID):
         pass
 
     @register('Constant')
@@ -408,7 +510,7 @@ def gen_ast(file:str) -> c_ast.Node:
     return ast
 
 if __name__=='__main__':
-    file = './c_file/zc2.c'
+    file = './c_file/zc1.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)

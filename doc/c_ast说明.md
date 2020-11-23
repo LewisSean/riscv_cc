@@ -67,6 +67,14 @@ Decl的两个成员以及它们可能的类型(未必全面):
 - type
   - TypeDecl
 
+
+
+## PtrDecl
+
+- type
+  - TypeDecl
+    - type=IdentifierType
+
 # 函数定义
 
 ## FuncDef
@@ -139,6 +147,17 @@ struct Point{
     - type=Struct
       - Struct的完整信息
 
+## StructRef
+
+`a.x`中a是name,x是field
+
+- name
+  - ID
+- type
+  - '.'
+- field
+  - ID
+
 # 控制语句
 
 ## If
@@ -149,3 +168,17 @@ struct Point{
   - Compound
 - iffalse
   - None
+
+# 表达式
+
+## ID
+
+name
+
+## UnaryOp
+
+- op
+  - str
+- expr
+  - ID
+
