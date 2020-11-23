@@ -101,11 +101,13 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list):
                         ch.value = '0o'+ch.value[1:]
                     
                     '''
-                    return arg1, arg2, (ch.value, ch.type)
+                    return arg1, arg2, ('constant', ch.value, ch.type)
 
                 elif isinstance(ch, (c_ast.ID,)):
+
                     t: SymTab = symtab.get_symtab_of(ch)
                     sym = t.get_symbol(ch.name)
+                    print(sym)
                     return arg1, arg2, (ch.name, sym)
 
 

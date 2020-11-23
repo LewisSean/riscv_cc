@@ -10,7 +10,7 @@ class FlowGraph(object):
     获取的是一个函数的流图
     所以入口节点应该是FuncDef
     """
-    def __init__(self, node: c_ast.FuncDef, symtab: SymTabStore, map: dict):
+    def __init__(self, node: c_ast.FuncDef, symtab: SymTabStore, map: dict = None):
 
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
@@ -126,20 +126,23 @@ class FlowGraph(object):
         # 处理单个节点，往往需要对子节点递归调用，反例：只有一个四元组的block
         else:
             node = nodes[0]
+
             # 处理compound节点
             # 注意compound嵌套
-            if isinstance(node, c_ast.Compound):
+            if isinstance(nodes[0], c_ast.Compound):
                 # 列表为空
-                if len(node.block_items) == 0:
+                if len(nodes[0].block_items) == 0:
                     new_id = self._get_id()
                     self.blocks[new_id] = Block(new_id, [], pres, sucs, self.symtab)
 
                     return [new_id], [new_id]
 
                 # blocks：存储compound内部所有相同block的节点的列表
-                blocks_list = []
+                # blocks_list = []
                 block_nodes = []
-                for _block in node.block_items:
+                out_stmt = deepcopy(pres)
+                flag = True
+                for _block in nodes[0].block_items:
                     # print('------------------------')
                     # _block.show()
 
@@ -148,30 +151,38 @@ class FlowGraph(object):
 
                     elif self._is_end(_block):
                         block_nodes.append(_block)
-                        blocks_list.append(deepcopy(block_nodes))
+                        tmp, out_stmt = self._gen_blocks(block_nodes, out_stmt, loop_id=loop_id)
+                        if flag:
+                            in_stmt = deepcopy(tmp)
+                            flag = False
+                        # blocks_list.append(deepcopy(block_nodes))
                         block_nodes.clear()
 
                     elif self._is_new_block(_block):
                         if len(block_nodes) != 0:
-                            blocks_list.append(deepcopy(block_nodes))
+                            tmp, out_stmt = self._gen_blocks(block_nodes, out_stmt, loop_id=loop_id)
+                            if flag:
+                                in_stmt = deepcopy(tmp)
+                                flag = False
                             block_nodes.clear()
-                        blocks_list.append([_block])
+                        tmp, out_stmt = self._gen_blocks([_block], out_stmt, loop_id=loop_id)
+                        # if len(block_nodes) != 0:
+                        #     blocks_list.append(deepcopy(block_nodes))
+                        #     block_nodes.clear()
+                        # blocks_list.append([_block])
+
                     else:
                         pass
                         # raise SyntaxError("node {} can't be dealt with!".format(type(_block)))
 
                 if len(block_nodes) != 0:
-                    blocks_list.append(deepcopy(block_nodes))
-
-                """
-                print(len(blocks_list))
-                for item in blocks_list:
-                    print(str(len(item)))
-                    for i in item:
-                        print(str(type(i)))
-                """
+                    tmp, out_stmt = self._gen_blocks(block_nodes, out_stmt, loop_id=loop_id)
+                    if flag:
+                        in_stmt = deepcopy(tmp)
+                        flag = False
 
                 # 对当前列表的每个item，递归调用
+                '''
                 out_stmt = deepcopy(pres)
                 flag = True
                 for item in blocks_list:
@@ -180,6 +191,7 @@ class FlowGraph(object):
                         in_stmt = deepcopy(tmp)
                         flag = False
                     # print("new blocks for compound are {}".format(str(out_stmt)))
+                '''
 
                 if sucs is not None:
                     for suc in sucs:
@@ -188,15 +200,15 @@ class FlowGraph(object):
                 return in_stmt, out_stmt
 
             # 处理While
-            if isinstance(node, c_ast.While):
+            if isinstance(nodes[0], c_ast.While):
                 loop_id = self._get_loop_id()
                 # 生成cond的block
-                cond_in, cond_out = self._gen_blocks([node.cond], pres, sucs, loop_id)
+                cond_in, cond_out = self._gen_blocks([nodes[0].cond], pres, sucs, loop_id)
                 self.blocks[cond_in[0]].name = "cond_"+str(loop_id)
 
                 # 生成stmt的block
                 # cond 即是stmt的前驱，也是stmt的后继
-                stmt_in, stmt_out = self._gen_blocks([node.stmt], cond_out, cond_in, loop_id)
+                stmt_in, stmt_out = self._gen_blocks([nodes[0].stmt], cond_out, cond_in, loop_id)
                 """
                 _name = "loop_{}".format(loop_id)
                 for id in range(stmt_in[0], stmt_out[0] + 1):
@@ -209,17 +221,17 @@ class FlowGraph(object):
                 return cond_in, cond_out
 
             # 处理DoWhile
-            if isinstance(node, c_ast.DoWhile):
+            if isinstance(nodes[0], c_ast.DoWhile):
                 loop_id = self._get_loop_id()
 
-                in_stmt, out_stmt = self._gen_blocks([node.stmt], pres, loop_id=loop_id)
+                in_stmt, out_stmt = self._gen_blocks([nodes[0].stmt], pres, loop_id=loop_id)
                 """
                 _name = "loop_{}".format(loop_id)
                 for id in range(in_stmt[0], out_stmt[0] + 1):
                     self.blocks[id].name = _name
                 """
 
-                cond_in, cond_out = self._gen_blocks([node.cond], out_stmt, in_stmt, loop_id)
+                cond_in, cond_out = self._gen_blocks([nodes[0].cond], out_stmt, in_stmt, loop_id)
                 self.blocks[cond_in[0]].name = "cond_" + str(loop_id)
 
                 # 补充stmt的后继
@@ -232,10 +244,10 @@ class FlowGraph(object):
                 return in_stmt, cond_out
 
             # 处理If
-            if isinstance(node, c_ast.If):
-                cond_in, cond_out = self._gen_blocks([node.cond], pres, loop_id=loop_id)
-                iftrue_in, iftrue_out = self._gen_blocks([node.iftrue], cond_out, sucs, loop_id=loop_id)
-                iffalse_in, iffalse_out = self._gen_blocks([node.iffalse], cond_out, sucs, loop_id=loop_id)
+            if isinstance(nodes[0], c_ast.If):
+                cond_in, cond_out = self._gen_blocks([nodes[0].cond], pres, loop_id=loop_id)
+                iftrue_in, iftrue_out = self._gen_blocks([nodes[0].iftrue], cond_out, sucs, loop_id=loop_id)
+                iffalse_in, iffalse_out = self._gen_blocks([nodes[0].iffalse], cond_out, sucs, loop_id=loop_id)
                 if_out = iftrue_out + iffalse_out
 
                 # cond的分支选择
@@ -245,9 +257,9 @@ class FlowGraph(object):
 
             # Label
             # Label的子节点是紧接着它的一个Node！！！！！！
-            if isinstance(node, c_ast.Label):
-                in_label, out_label = self._gen_blocks([node.stmt], pres, sucs, loop_id=loop_id)
-                self.labels[node.name] = in_label
+            if isinstance(nodes[0], c_ast.Label):
+                in_label, out_label = self._gen_blocks([nodes[0].stmt], pres, sucs, loop_id=loop_id)
+                self.labels[nodes[0].name] = in_label
                 return in_label, out_label
 
             # Switch 未完待续
@@ -332,8 +344,8 @@ if __name__ == '__main__':
     print(t)
     '''
     """
-    # python 的 = 对object对象是深拷贝，且连同拷贝子节点
-    node = ast.ext[2]
+    # python 的 = 对object对象不是深拷贝
+    node = ast.ext[1]
     node.show()
     print("--------------\n\n")
     node = c_ast.IdentifierType(names=[])
@@ -344,8 +356,8 @@ if __name__ == '__main__':
     """
 
     # map记录了ast当中所有节点的父节点：字典类型
-    map = {}
-    gen_ast_parents(ast, map)
+    # map = {}
+    # gen_ast_parents(ast, map)
     # for item in map.keys():
     #     print("{} : {}".format(type(item), type(map[item])))
 
@@ -353,4 +365,4 @@ if __name__ == '__main__':
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
-            blocks = FlowGraph(ch, sts, map)
+            blocks = FlowGraph(ch, sts)
