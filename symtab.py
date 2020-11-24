@@ -14,7 +14,7 @@ class Symbol():
         self.type = type_str
 
     def __repr__(self):
-        return '%s,sz=%d,off=%d(%s),type=%s'%(
+        return '\033[1;33m%s\033[0m,sz=%d,off=%d(%s),type=%s'%(
             self.name,self.size,self.offset,self.offset_type,self.type)
 
 class BasicSymbol(Symbol):
@@ -151,15 +151,18 @@ class PointerSymbol(Symbol):
     指针符号
     size: 指针的大小,所有指针的大小都是固定的4byte
     target_size: 指向的元素的大小
+    target_type: 指向的元素的类型名,str类型
     '''
-    def __init__(self, name, target_size, target_offset=None, offset_type=None):
+    def __init__(self, name, target_size, target_offset=None, offset_type=None, target_type=None):
         super().__init__(name)
         self.target_size = target_size
         self.size = 4
+        self.target_type = target_type
+        self.type = 'pointer'
     
     def __repr__(self):
         ans = super().__repr__()
-        ans += ',t_sz=%d'%self.target_size
+        ans += ',t_sz=%d,t_type=%s'%(self.target_size,self.target_type)
         return ans
 
     
@@ -447,8 +450,9 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
         name = u.type.declname
         target_size = res['size']
+        target_type = res['type']
 
-        psym = PointerSymbol(name,target_size)
+        psym = PointerSymbol(name,target_size,target_type=target_type)
         return {'pointer_symbol':psym}
         
     @register('ArrayDecl')
