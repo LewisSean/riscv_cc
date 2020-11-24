@@ -90,22 +90,52 @@ FileAST(ext=[Decl(name='a',
                                                            lvalue=ID(name='c'
                                                                      ),
                                                            rvalue=BinaryOp(op='+',
-                                                                           left=BinaryOp(op='*',
-                                                                                         left=ID(name='c'
-                                                                                                 ),
-                                                                                         right=BinaryOp(op='+',
-                                                                                                        left=ID(name='a'
-                                                                                                                ),
-                                                                                                        right=ID(name='b'
-                                                                                                                 )
-                                                                                                        )
+                                                                           left=BinaryOp(op='+',
+                                                                                         left=BinaryOp(op='*',
+                                                                                                       left=ID(name='c'
+                                                                                                               ),
+                                                                                                       right=BinaryOp(op='+',
+                                                                                                                      left=ID(name='a'
+                                                                                                                              ),
+                                                                                                                      right=ID(name='b'
+                                                                                                                               )
+                                                                                                                      )
+                                                                                                       ),
+                                                                                         right=UnaryOp(op='--',
+                                                                                                       expr=ID(name='b'
+                                                                                                               )
+                                                                                                       )
                                                                                          ),
-                                                                           right=UnaryOp(op='--',
+                                                                           right=UnaryOp(op='p--',
                                                                                          expr=ID(name='b'
                                                                                                  )
                                                                                          )
                                                                            )
                                                            ),
+                                                Decl(name='d',
+                                                     quals=[
+                                                           ],
+                                                     storage=[
+                                                             ],
+                                                     funcspec=[
+                                                              ],
+                                                     type=TypeDecl(declname='d',
+                                                                   quals=[
+                                                                         ],
+                                                                   type=IdentifierType(names=['int'
+                                                                                             ]
+                                                                                       )
+                                                                   ),
+                                                     init=BinaryOp(op='*',
+                                                                   left=UnaryOp(op='-',
+                                                                                expr=ID(name='c'
+                                                                                        )
+                                                                                ),
+                                                                   right=ID(name='b'
+                                                                            )
+                                                                   ),
+                                                     bitsize=None
+                                                     ),
                                                 Return(expr=ID(name='c'
                                                                )
                                                        )

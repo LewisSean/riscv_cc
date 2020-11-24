@@ -283,10 +283,12 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
             x = dfs(u.type)['pointer_symbol']
             x.offset = offset
             offset += x.size
-            if in_func: x.offset_type = OFFSET_LOCAL
+            if in_func: x.offset_type = OFFSET.LOCAL
             return {'symbol':x}
 
         res = dfs(u.type)
+        if u.init is not None:
+            dfs(u.init)
 
         # 仅定义结构体而不声明变量则name=None
         if u.name is not None:
@@ -297,7 +299,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
                 a = 'haha'
             x.offset = offset
             offset += x.size
-            if in_func: x.offset_type = OFFSET_LOCAL
+            if in_func: x.offset_type = OFFSET.LOCAL
 
         struct_symbol = None
         if res.get('struct_symbol') is not None:

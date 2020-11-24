@@ -76,9 +76,9 @@ class FlowGraph(object):
                 print("branch>>>>")
                 for key in self.blocks[k].branch:
                     print("if {}: goto block {}".format(self.blocks[k].branch[key], key))
-            print("nodes>>>>")
-            for node in self.blocks[k].ast_nodes:
-                print(str(type(node)))
+            # print("nodes>>>>")
+            # for node in self.blocks[k].ast_nodes:
+            #     print(str(type(node)))
             print('..................................')
 
     def _get_id(self):

@@ -108,6 +108,8 @@ class Block(object):
         for node in ast_nodes:
             if isinstance(node, c_ast.Assignment):
                 assign(node, symtab, res, reg_pool)
+            elif isinstance(node, c_ast.Decl):
+                dec(node, symtab, res, reg_pool)
 
 
 # 处理assignment
@@ -128,10 +130,35 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
         sym = symtab.get_symtab_of(left).get_symbol(left.name)
         dest = (left.name, sym)
         res.append(Quadruple(node.op, arg1, None, dest))
-
     else:
         pass
 
+
+# 处理dec
+def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
+
+    # 先处理右值
+    if node.init is None:
+        return
+    if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp, )):
+        arg1 = expr(node.init, symtab, res, reg_pool)
+    else:
+        pass
+
+    # 处理左值
+    # 可能的类型：PtrDecl/TypeDecl/ArrayDecl
+    left = node.type
+    if isinstance(left, c_ast.TypeDecl):
+        sym = symtab.get_symtab_of(node).get_symbol(node.name)
+        dest = (node.name, sym)
+
+    # 得到四元组
+    # 直接赋值
+    if not isinstance(node.init, c_ast.InitList):
+        res.append(Quadruple('=', arg1, None, dest))
+    # 连续赋值，对于struct和array
+    else:
+        pass
 
 # 处理右值！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, dest = None):
