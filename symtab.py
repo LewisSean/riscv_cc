@@ -28,6 +28,7 @@ class BasicSymbol(Symbol):
         'long int':4,
         'signed':4,
         'unsigned':4,
+        'int':4,
         'short int':2,
         'short':2,
         'char':1,

@@ -77,20 +77,8 @@ FileAST(ext=[Decl(name='a',
                                                                      ),
                                                            rvalue=BinaryOp(op='+',
                                                                            left=BinaryOp(op='*',
-                                                                                         left=Cast(to_type=Typename(name=None,
-                                                                                                                    quals=[
-                                                                                                                          ],
-                                                                                                                    type=TypeDecl(declname=None,
-                                                                                                                                  quals=[
-                                                                                                                                        ],
-                                                                                                                                  type=IdentifierType(names=['int'
-                                                                                                                                                            ]
-                                                                                                                                                      )
-                                                                                                                                  )
-                                                                                                                    ),
-                                                                                                   expr=ID(name='c'
-                                                                                                           )
-                                                                                                   ),
+                                                                                         left=ID(name='c'
+                                                                                                 ),
                                                                                          right=Constant(type='int',
                                                                                                         value='100'
                                                                                                         )
