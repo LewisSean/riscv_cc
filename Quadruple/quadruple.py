@@ -1,13 +1,11 @@
 class Quadruple(object):
-    def __init__(self, op, arg1, arg2, dest, type1, type2):
+    def __init__(self, op, arg1, arg2, dest):
 
         # 四元组
         self.op = op
         self.arg1 = arg1
         self.arg2 = arg2
         self.dest = dest
-        self.type1 = type1
-        self.type2 = type2
 
         # 行号
         self.line = -1

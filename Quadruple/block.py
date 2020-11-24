@@ -5,6 +5,29 @@ from symtab import symtab_store, SymTab, SymTabStore
 from Quadruple.quadruple import Quadruple
 import re
 
+
+class MyConstant(dict):
+    def __init__(self, value, type):
+        self['value'] = value
+        self['type'] = type
+
+
+class RegPools(dict):
+    def __init__(self, num=32):
+        self.num = num
+        for i in range(num):
+            self["R".format(i)] = True
+
+    def get_reg(self, type: str):
+        for i in range(self.num):
+            if self["R".format(i)]:
+                self["R".format(i)] = False
+                return "R".format(i), type
+
+    def release_reg(self, reg:str):
+        self[reg] = True
+
+
 class Block(object):
     def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, symtab:SymTabStore = None, Quadruples: list = None):
         if Quadruples is None:
@@ -71,44 +94,53 @@ class Block(object):
         """
         for node in ast_nodes:
             # node.show()
-            expr(node, symtab, res)
+            if isinstance(node, c_ast.Assignment):
+                assign(node, symtab, res)
         return []
 
-def expr(node: c_ast.Node, symtab: SymTabStore, res: list):
+
+# 处理assignment
+def assign(node: c_ast.Node, symtab: SymTabStore, res: list):
+
     """
-    返回arg1, arg2, dest,     (四元组的符号，类型)
+    先处理rvalue，处理lvalue，再执行赋值运算
+    ch_name: 
+        lvalue  ID/StructRef/ArrayRef/UnaryOp( *k = 100 )
+        rvalue  UnaryOp/BinaryOp/Constant/ID/StructRef( p.x  p->x )/ArrayRef( a[100] ) /TernaryOp(= ? a:b)
+        注意：枚举类型中的元素都是ID
     """
+    # 先处理左值
+    arg2 = expr(node.rvalue, symtab, res)
+    arg1 = expr(node.lvalue, symtab, res)
+
+
+def expr(node: c_ast.Node, symtab: SymTabStore, res: list, dest = None):
     arg1 = None
     arg2 = None
-    dest = None
-    if isinstance(node, c_ast.Assignment):
-        """
-        先处理rvalue，处理lvalue，再执行赋值运算
-        ch_name: 
-            lvalue  ID/StructRef/ArrayRef/UnaryOp( *k = 100 )
-            rvalue  UnaryOp/BinaryOp/Constant/ID/StructRef( p.x  p->x )/ArrayRef( a[100] ) /TernaryOp(= ? a:b)
-            注意：枚举类型中的元素都是ID
-        """
-        for ch_name, ch in node.children():
-            print(ch_name, str(type(ch)))
-            if ch_name == 'rvalue':
-                # 叶节点
-                if isinstance(ch, (c_ast.Constant,)):
-                    ch.show(attrnames=True, nodenames=True, showcoord=True)
-                    '''
-                    # 八进制转换
-                    if ch.type == 'int' and re.match(r'0[0-9]+', ch.value) is not None:
-                        ch.value = '0o'+ch.value[1:]
-                    
-                    '''
-                    return arg1, arg2, ('constant', ch.value, ch.type)
+    if isinstance(node, (c_ast.Constant,)):
+        node.show(attrnames=True, nodenames=True, showcoord=True)
+        '''
+        # 八进制转换
+        if ch.type == 'int' and re.match(r'0[0-9]+', ch.value) is not None:
+            ch.value = '0o'+ch.value[1:]
 
-                elif isinstance(ch, (c_ast.ID,)):
+        '''
+        return node.value, MyConstant(node.value, node.type)
 
-                    t: SymTab = symtab.get_symtab_of(ch)
-                    sym = t.get_symbol(ch.name)
-                    print(sym)
-                    return arg1, arg2, (ch.name, sym)
+    elif isinstance(node, (c_ast.ID,)):
+        t: SymTab = symtab.get_symtab_of(node)
+        sym = t.get_symbol(node.name)
+        print(sym)
+        return node.name, sym
+
+    elif isinstance(node, (c_ast.UnaryOp, )):
+        arg1 = expr(node.expr, symtab, res)
+        res.append(Quadruple(node.op.name, arg1, arg2, dest))
+
+
+
+
+
 
 
 

@@ -2,7 +2,7 @@ from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
 from symtab import symtab_store, SymTab, SymTabStore
-from Quadruple.block import Block
+from Quadruple.block import Block, RegPools
 
 
 class FlowGraph(object):
@@ -10,13 +10,12 @@ class FlowGraph(object):
     获取的是一个函数的流图
     所以入口节点应该是FuncDef
     """
-    def __init__(self, node: c_ast.FuncDef, symtab: SymTabStore, map: dict = None):
+    def __init__(self, node: c_ast.FuncDef, symtab: SymTabStore):
 
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
 
-        # ast的所有节点的直接父节点存在map中，为了通过符号逐层往上匹配符号表树
-        self.map = map
+        self.reg_pool = RegPools()
         # bof 函数体的开始，用于判断是否是一个新的block开始，_is_new_block()用到
         self.bof = True
         # 增设entry和exit两个block(不包含实际四元组)，id分别为0和-1
@@ -329,8 +328,8 @@ if __name__ == '__main__':
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)
         # ast.show()
-        # with open('../c_file/ls3_out.out', 'w') as f:
-        #    f.write(str(ast))
+        with open('../c_file/ls3_out.out', 'w') as f:
+            f.write(str(ast))
 
     sts = symtab_store(ast)
     sts.show(ast)

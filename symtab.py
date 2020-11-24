@@ -379,7 +379,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         pass
 
     @register('UnaryOp')
-    def unaryOp(u):
+    def unaryOp(u: c_ast.UnaryOp):
+        dfs(u.expr)
         pass
 
     @register('ID')
@@ -391,11 +392,18 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         pass
 
     @register('TernaryOp')
-    def TernaryOp(u):
-        pass
+    def TernaryOp(u: c_ast.TernaryOp):
+        dfs(u.cond)
+        dfs(u.iftrue)
+        dfs(u.iffalse)
 
     @register('BinaryOp')
-    def BinaryOp(u):
+    def BinaryOp(u: c_ast.BinaryOp):
+        dfs(u.left)
+        dfs(u.right)
+
+    @register('Cast')
+    def Cast(u):
         pass
 
     dfs(ast)
