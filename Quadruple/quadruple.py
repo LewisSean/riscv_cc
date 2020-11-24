@@ -15,3 +15,12 @@ class Quadruple(object):
 
     def is_used(self, arg):
         return self.arg1 == arg or self.arg2 == arg
+
+    def __str__(self):
+        if self.arg2 is None:
+            return "{}, {}, , {}".format(self.op, self.arg1[0], self.dest[0])
+        else:
+            return "{}, {}, {}, {}".format(self.op, self.arg1[0], self.arg2[0], self.dest[0])
+
+    def __repr__(self):
+        return str(self)

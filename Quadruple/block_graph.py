@@ -66,7 +66,6 @@ class FlowGraph(object):
                     if b not in self.blocks[k].branch.keys():
                         self.blocks[k].branch[b] = False
 
-
     def show(self):
         print("\n\nblocks are as follows: \n")
         for k in self.blocks.keys():
@@ -108,7 +107,7 @@ class FlowGraph(object):
         # 如果当前节点数大于1，则说明这些节点是可以组成一个block的
         if len(nodes) > 1:
             new_id = self._get_id()
-            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab)
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab, self.reg_pool)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
 
@@ -117,7 +116,7 @@ class FlowGraph(object):
         # 单个节点，且自组成一个block
         elif not self._is_new_block(nodes[0]):
             new_id = self._get_id()
-            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab)
+            self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab, self.reg_pool)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
 
@@ -132,7 +131,7 @@ class FlowGraph(object):
                 # 列表为空
                 if len(nodes[0].block_items) == 0:
                     new_id = self._get_id()
-                    self.blocks[new_id] = Block(new_id, [], pres, sucs, self.symtab)
+                    self.blocks[new_id] = Block(new_id, [], pres, sucs, self.symtab, self.reg_pool)
 
                     return [new_id], [new_id]
 
@@ -364,4 +363,6 @@ if __name__ == '__main__':
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
-            blocks = FlowGraph(ch, sts)
+            flowGraph = FlowGraph(ch, sts)
+            for k in flowGraph.blocks.keys():
+                flowGraph.blocks[k].show_quadruples()
