@@ -64,7 +64,10 @@ class FlowGraph(object):
             if len(self.blocks[k].branch) != 0:
                 for b in self.blocks[k].suc:
                     if b not in self.blocks[k].branch.keys():
-                        self.blocks[k].branch[b] = False
+                        self.blocks[k].branch[False] = b
+
+        for k in self.blocks.keys():
+            self.blocks[k].complete_quadruples()
 
     def show(self):
         print("\n\nblocks are as follows: \n")
@@ -75,7 +78,7 @@ class FlowGraph(object):
             if self.blocks[k].branch != dict():
                 print("branch>>>>")
                 for key in self.blocks[k].branch:
-                    print("if {}: goto block {}".format(self.blocks[k].branch[key], key))
+                    print("if {}: goto block {}".format(key, self.blocks[k].branch[key]))
             # print("nodes>>>>")
             # for node in self.blocks[k].ast_nodes:
             #     print(str(type(node)))
@@ -213,7 +216,7 @@ class FlowGraph(object):
                     self.blocks[id].name = _name
                 """
                 # 分支选择
-                self.blocks[cond_out[0]].branch[stmt_in[0]] = True
+                self.blocks[cond_out[0]].branch[True] = stmt_in[0]
                 # 补充cond的后继
                 self.blocks[cond_out[0]].suc.extend(stmt_in)
                 return cond_in, cond_out
@@ -235,7 +238,7 @@ class FlowGraph(object):
                 # 补充stmt的后继
                 self.blocks[out_stmt[0]].suc = cond_in
                 # cond的分支选择
-                self.blocks[cond_out[0]].branch[in_stmt[0]] = True
+                self.blocks[cond_out[0]].branch[True] = in_stmt[0]
                 # 补充cond的后继
                 if sucs is not None:
                     self.blocks[cond_out[0]].suc.extend(sucs)
@@ -249,8 +252,8 @@ class FlowGraph(object):
                 if_out = iftrue_out + iffalse_out
 
                 # cond的分支选择
-                self.blocks[cond_out[0]].branch[iftrue_in[0]] = True
-                self.blocks[cond_out[0]].branch[iffalse_in[0]] = False
+                self.blocks[cond_out[0]].branch[True] = iftrue_in[0]
+                self.blocks[cond_out[0]].branch[False] = iffalse_in[0]
                 return cond_in, if_out
 
             # Label

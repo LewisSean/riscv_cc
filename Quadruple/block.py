@@ -52,15 +52,33 @@ class Block(object):
             self.suc = []
 
         self.ast_nodes = ast_nodes
+        self.branch = dict()
         self.gen_quadruples(ast_nodes, symtab, self.Quadruples, reg_pool)
         self.in_live_vals = []
         self.out_live_vals = []
         # branch是一个字典，branch[1] = True 表示block如果计算为True,后继block的id是1，用于处理iF.cond和while.cond节点
-        self.branch = dict()
         # 如果当前的block是循环体的stmt中的一个block，则loop_end保存从它跳出循环的下一个block的id，用于break
         self.loop_end = None
         # block的命名，cond_id表示是循环体id的判断节点，loop_id表示是循环体id的循环块（多个位于相同循环体内的block共享一个循环体id）
         self.name = ""
+
+    def complete_quadruples(self):
+        line = 0
+        for quad in self.Quadruples:
+            quad.line = line
+            line += 1
+            if quad.dest[1] == 'loc' and quad.dest[0].startswith("B__"):
+                quad.dest[0] = "B_{}_".format(self.id) + quad.dest[0][3:]
+
+        if len(self.branch) != 0:
+            for quad in self.Quadruples:
+                if quad.dest[1] == 'loc' and quad.dest[0].startswith("B_{}"):
+                    if quad.arg2 is not None and quad.arg2[0] == 'True':
+                        quad.dest[0] = 'B_{}_0'.format(self.branch[True])
+                    else:
+                        quad.dest[0] = 'B_{}_0'.format(self.branch[False])
+
+
 
     def show_quadruples(self):
         print("block {}:>>>>>>>>>>>>>>>>>>>>>>".format(self.id))
@@ -105,6 +123,15 @@ class Block(object):
             =[] x y z  (z = x[y])
 
         """
+
+        # 处理分支节点
+        if len(ast_nodes) == 1 and \
+                isinstance(ast_nodes[0], (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp)):
+            res_bool = expr(ast_nodes[0], symtab, res, reg_pool)
+            res.append(Quadruple('j=', res_bool, ['True', MyConstant('true', 'bool')], ["B_{}_0", 'loc']))
+            res.append(Quadruple('j', None, None, ["B_{}_0", 'loc']))
+
+        # 处理常规节点
         for node in ast_nodes:
             if isinstance(node, c_ast.Assignment):
                 assign(node, symtab, res, reg_pool)
@@ -140,7 +167,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
     # 先处理右值
     if node.init is None:
         return
-    if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp, )):
+    if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp, c_ast.TernaryOp)):
         arg1 = expr(node.init, symtab, res, reg_pool)
     else:
         pass
@@ -159,6 +186,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
     # 连续赋值，对于struct和array
     else:
         pass
+
 
 # 处理右值！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, dest = None):
@@ -188,37 +216,64 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, d
                 reg_pool.release_reg(arg1[0])
             return tmp
 
-        # 此处我们默认无*(a+3)这种情况，有就将其替换为a[3]
-        # 新产生的tmp保存内存地址
-        elif node.op == '*' or  node.op == '&':
-            arg1 = expr(node.expr, symtab, res, reg_pool)
-            tmp = reg_pool.get_reg(arg1[1].type)
-            tmp[1].is_addr = True
-            res.append(Quadruple(node.op, arg1, None, tmp))
-            if isinstance(arg1[1], TmpValue):
-                reg_pool.release_reg(arg1[0])
-            return tmp
-
-        # - + ~(按位取反) !(逻辑非)
+        # - + ~(按位取反) !(逻辑非)  *  &(注意！！，保存的是地址)
         else:
             arg1 = expr(node.expr, symtab, res, reg_pool)
             tmp = reg_pool.get_reg(arg1[1].type)
             res.append(Quadruple(node.op, arg1, None, tmp))
+            if node.op == '&':
+                tmp[1].is_addr = True
             if isinstance(arg1[1], TmpValue):
                 reg_pool.release_reg(arg1[0])
             return tmp
 
     elif isinstance(node, (c_ast.BinaryOp, )):
-        arg1 = expr(node.left, symtab, res, reg_pool)
-        arg2 = expr(node.right, symtab, res, reg_pool)
+        if node.op not in ('>=', '>','==', '<=', '<', '!='):
+            arg1 = expr(node.left, symtab, res, reg_pool)
+            arg2 = expr(node.right, symtab, res, reg_pool)
+            tmp = reg_pool.get_reg(arg1[1].type)
+            print(">>>>>>>>>>>>>>>>>>  ", tmp[0])
+            res.append(Quadruple(node.op, arg1, arg2, tmp))
+            if isinstance(arg1[1], TmpValue):
+                reg_pool.release_reg(arg1[0])
+            if isinstance(arg2[1], TmpValue):
+                reg_pool.release_reg(arg2[0])
+            return tmp
+        # 处理布尔运算
+        else:
+            arg1 = expr(node.left, symtab, res, reg_pool)
+            arg2 = expr(node.right, symtab, res, reg_pool)
+            tmp = reg_pool.get_reg(arg1[1].type)
+            cur_line = len(res)
+            res.append(
+                Quadruple('j'+node.op, arg1, arg2, ["B__{}".format(cur_line + 3), 'loc']))
+            res.append(Quadruple('=', ['False', MyConstant('false', 'bool')], None, tmp))
+            res.append(Quadruple('j', None, None, ["B__{}".format(cur_line + 4), 'loc']))
+            res.append(Quadruple('=', ['True', MyConstant('true', 'bool')], None, tmp))
+            if isinstance(arg1[1], TmpValue):
+                reg_pool.release_reg(arg1[0])
+            if isinstance(arg2[1], TmpValue):
+                reg_pool.release_reg(arg2[0])
+            return tmp
+
+
+
+    elif isinstance(node, c_ast.TernaryOp):
+        bool_res = expr(node.cond, symtab, res, reg_pool)
+        arg1 = expr(node.iftrue, symtab, res, reg_pool)
+        arg2 = expr(node.iffalse, symtab, res, reg_pool)
         tmp = reg_pool.get_reg(arg1[1].type)
-        print(">>>>>>>>>>>>>>>>>>  ", tmp[0])
-        res.append(Quadruple(node.op, arg1, arg2, tmp))
+        cur_line = len(res)
+        res.append(Quadruple('j=', bool_res, ['True', MyConstant('true', 'bool')], ["B__{}".format(cur_line + 3), 'loc']))
+        res.append(Quadruple('=', arg2, None, tmp))
+        res.append(Quadruple('j', None, None, ["B__{}".format(cur_line + 4), 'loc']))
+        res.append(Quadruple('=', arg1, None, tmp))
         if isinstance(arg1[1], TmpValue):
             reg_pool.release_reg(arg1[0])
         if isinstance(arg2[1], TmpValue):
             reg_pool.release_reg(arg2[0])
         return tmp
+
 
 
 

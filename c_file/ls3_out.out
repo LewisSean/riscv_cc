@@ -81,8 +81,10 @@ FileAST(ext=[Decl(name='a',
                                                                            right=BinaryOp(op='*',
                                                                                           left=ID(name='c'
                                                                                                   ),
-                                                                                          right=ID(name='b'
-                                                                                                   )
+                                                                                          right=UnaryOp(op='&',
+                                                                                                        expr=ID(name='b'
+                                                                                                                )
+                                                                                                        )
                                                                                           )
                                                                            )
                                                            ),
@@ -136,6 +138,85 @@ FileAST(ext=[Decl(name='a',
                                                                    ),
                                                      bitsize=None
                                                      ),
+                                                Decl(name='kk',
+                                                     quals=[
+                                                           ],
+                                                     storage=[
+                                                             ],
+                                                     funcspec=[
+                                                              ],
+                                                     type=TypeDecl(declname='kk',
+                                                                   quals=[
+                                                                         ],
+                                                                   type=IdentifierType(names=['int'
+                                                                                             ]
+                                                                                       )
+                                                                   ),
+                                                     init=TernaryOp(cond=BinaryOp(op='>',
+                                                                                  left=ID(name='a'
+                                                                                          ),
+                                                                                  right=Constant(type='int',
+                                                                                                 value='1000'
+                                                                                                 )
+                                                                                  ),
+                                                                    iftrue=ID(name='d'
+                                                                              ),
+                                                                    iffalse=ID(name='a'
+                                                                               )
+                                                                    ),
+                                                     bitsize=None
+                                                     ),
+                                                If(cond=BinaryOp(op='||',
+                                                                 left=BinaryOp(op='>',
+                                                                               left=ID(name='a'
+                                                                                       ),
+                                                                               right=Constant(type='int',
+                                                                                              value='0'
+                                                                                              )
+                                                                               ),
+                                                                 right=BinaryOp(op='<',
+                                                                                left=ID(name='a'
+                                                                                        ),
+                                                                                right=Constant(type='int',
+                                                                                               value='100'
+                                                                                               )
+                                                                                )
+                                                                 ),
+                                                   iftrue=Compound(block_items=[Assignment(op='=',
+                                                                                           lvalue=ID(name='c'
+                                                                                                     ),
+                                                                                           rvalue=BinaryOp(op='+',
+                                                                                                           left=ID(name='c'
+                                                                                                                   ),
+                                                                                                           right=BinaryOp(op='*',
+                                                                                                                          left=Constant(type='int',
+                                                                                                                                        value='2'
+                                                                                                                                        ),
+                                                                                                                          right=ID(name='b'
+                                                                                                                                   )
+                                                                                                                          )
+                                                                                                           )
+                                                                                           )
+                                                                               ]
+                                                                   ),
+                                                   iffalse=Compound(block_items=[Assignment(op='=',
+                                                                                            lvalue=ID(name='c'
+                                                                                                      ),
+                                                                                            rvalue=BinaryOp(op='+',
+                                                                                                            left=ID(name='b'
+                                                                                                                    ),
+                                                                                                            right=BinaryOp(op='*',
+                                                                                                                           left=Constant(type='int',
+                                                                                                                                         value='2'
+                                                                                                                                         ),
+                                                                                                                           right=ID(name='c'
+                                                                                                                                    )
+                                                                                                                           )
+                                                                                                            )
+                                                                                            )
+                                                                                ]
+                                                                    )
+                                                   ),
                                                 Return(expr=ID(name='c'
                                                                )
                                                        )

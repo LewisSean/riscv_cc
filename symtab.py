@@ -439,6 +439,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('If')
     def if_else(u:c_ast.If):
+        dfs(u.cond)
         dfs(u.iftrue)
         dfs(u.iffalse)
 
