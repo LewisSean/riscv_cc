@@ -1,6 +1,7 @@
 int a = 1000;
 int main(int c ,int b){
-int *p = a;
+int *p = &a;
+*(p+1) = 1000;
 a = a + c * &b;
 while(a < 100){
 while(c > 100){

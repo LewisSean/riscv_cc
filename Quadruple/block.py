@@ -168,9 +168,28 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
         sym = symtab.get_symtab_of(left).get_symbol(left.name)
         dest = (left.name, sym)
         res.append(Quadruple(node.op, arg1, None, dest))
-    else:
-        pass
+    elif isinstance(left, c_ast.UnaryOp):
+        if left.op == '*':
+            # case: *p = 100
+            if isinstance(left.expr, c_ast.ID):
+                sym = get_sym_by_id(left.expr, symtab)
+                dest = [left.expr.name, sym]
+                res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], dest))
 
+            # case: *(p + 1) = 100
+            elif isinstance(left.expr, c_ast.BinaryOp):
+                _expr = left.expr
+                if isinstance(_expr.left, c_ast.ID):
+                    sym = get_sym_by_id(_expr.left, symtab)
+                    dest = [_expr.left.name, sym]
+                    arg2 = expr(_expr.right, symtab, res, reg_pool)
+                    res.append(Quadruple('=[]', arg1, arg2, dest))
+
+
+def get_sym_by_id(node, symtab):
+    t: SymTab = symtab.get_symtab_of(node)
+    sym = t.get_symbol(node.name)
+    return sym
 
 # 处理dec
 def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
@@ -189,11 +208,17 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
     if isinstance(left, c_ast.TypeDecl):
         sym = symtab.get_symtab_of(node).get_symbol(node.name)
         dest = (node.name, sym)
+    elif isinstance(left, c_ast.PtrDecl):
+        sym = symtab.get_symtab_of(node).get_symbol(node.name)
+        dest = (node.name, sym)
 
     # 得到四元组
     # 直接赋值
     if not isinstance(node.init, c_ast.InitList):
-        res.append(Quadruple('=', arg1, None, dest))
+        if dest[1].type != 'pointer':
+            res.append(Quadruple('=', arg1, None, dest))
+        elif dest[1].type == 'pointer':
+            res.append(Quadruple('[]=', arg1, ['0', MyConstant('0', dest[1].target_type)], dest))
     # 连续赋值，对于struct和array
     else:
         pass
