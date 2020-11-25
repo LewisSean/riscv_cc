@@ -212,6 +212,9 @@ class FlowGraph(object):
                                 flag = False
                             block_nodes.clear()
                         tmp, out_stmt = self._gen_blocks([_block], out_stmt, loop_id=loop_id)
+                        if flag:
+                            in_stmt = deepcopy(tmp)
+                            flag = False
                         # if len(block_nodes) != 0:
                         #     blocks_list.append(deepcopy(block_nodes))
                         #     block_nodes.clear()
