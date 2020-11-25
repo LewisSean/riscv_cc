@@ -72,7 +72,28 @@ FileAST(ext=[Decl(name='a',
                                bitsize=None
                                ),
                      param_decls=None,
-                     body=Compound(block_items=[Assignment(op='=',
+                     body=Compound(block_items=[Decl(name='p',
+                                                     quals=[
+                                                           ],
+                                                     storage=[
+                                                             ],
+                                                     funcspec=[
+                                                              ],
+                                                     type=PtrDecl(quals=[
+                                                                        ],
+                                                                  type=TypeDecl(declname='p',
+                                                                                quals=[
+                                                                                      ],
+                                                                                type=IdentifierType(names=['int'
+                                                                                                          ]
+                                                                                                    )
+                                                                                )
+                                                                  ),
+                                                     init=ID(name='a'
+                                                             ),
+                                                     bitsize=None
+                                                     ),
+                                                Assignment(op='=',
                                                            lvalue=ID(name='a'
                                                                      ),
                                                            rvalue=BinaryOp(op='+',

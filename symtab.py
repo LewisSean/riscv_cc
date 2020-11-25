@@ -275,6 +275,9 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         '''
         nonlocal offset
 
+        if u.init is not None:
+            dfs(u.init)
+
         type_name = type(u.type).__name__
         if type_name == 'FuncDecl':
             return dfs(u.type)
@@ -287,8 +290,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
             return {'symbol':x}
 
         res = dfs(u.type)
-        if u.init is not None:
-            dfs(u.init)
+
 
         # 仅定义结构体而不声明变量则name=None
         if u.name is not None:
@@ -456,6 +458,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         target_type = res['type']
 
         psym = PointerSymbol(name,target_size,target_type=target_type)
+
         return {'pointer_symbol':psym}
         
     @register('ArrayDecl')

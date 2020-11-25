@@ -1,6 +1,6 @@
-
 int a = 1000;
 int main(int c ,int b){
+int *p = a;
 a = a + c * &b;
 while(a < 100){
 while(c > 100){
