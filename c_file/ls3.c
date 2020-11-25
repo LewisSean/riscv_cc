@@ -11,6 +11,10 @@ c = c + 2*b;
 else{
 c = b + 2*c;
 }
-
+while(a < 100){
+a = a + b;
+b = b + c;
+}
+int aaa = 1000;
 return c;
 }

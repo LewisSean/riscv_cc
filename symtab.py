@@ -469,20 +469,22 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         dfs(u.lvalue)
 
     @register('While')
-    def While(u):
-        pass
+    def While(u:c_ast.While):
+        dfs(u.cond)
+        dfs(u.stmt)
 
     @register('DoWhile')
     def DoWhile(u):
-        pass
+        dfs(u.cond)
+        dfs(u.stmt)
 
     @register('Return')
     def Return(u):
         pass
 
     @register('Label')
-    def Label(u):
-        pass
+    def Label(u:c_ast.Label):
+        dfs(u.stmt)
 
     @register('Goto')
     def goto(u):
@@ -513,8 +515,9 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         dfs(u.right)
 
     @register('Cast')
-    def Cast(u):
-        pass
+    def Cast(u:c_ast.Cast):
+        dfs(u.to_type)
+        dfs(u.expr)
 
     dfs(ast)
     return sts

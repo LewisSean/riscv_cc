@@ -54,20 +54,30 @@ class Block(object):
         self.ast_nodes = ast_nodes
         self.branch = dict()
         self.gen_quadruples(ast_nodes, symtab, self.Quadruples, reg_pool)
-        self.in_live_vals = []
-        self.out_live_vals = []
+        # 在最终产生的四元组列表中的起始与结束行数
+        self.begin = 0
+        self.end = 0
         # branch是一个字典，branch[1] = True 表示block如果计算为True,后继block的id是1，用于处理iF.cond和while.cond节点
         # 如果当前的block是循环体的stmt中的一个block，则loop_end保存从它跳出循环的下一个block的id，用于break
         self.loop_end = None
         # block的命名，cond_id表示是循环体id的判断节点，loop_id表示是循环体id的循环块（多个位于相同循环体内的block共享一个循环体id）
         self.name = ""
 
+    def adjust(self):
+        for quad in self.Quadruples:
+            if quad.dest and quad.dest[1] == 'loc' and quad.dest[0].startswith('B_{}'.format(self.id)):
+                quad.dest[0] = "L_{}".format(int(quad.dest[0][quad.dest[0].rfind('_')+1:])+self.begin)
+
     def complete_quadruples(self):
+        # 为每个单一后继的block的四元组末尾添加跳转
+        if len(self.suc) == 1:
+            self.Quadruples.append(Quadruple('j', None, None, ["B_{}_0".format(self.suc[0]), 'loc']))
+
         line = 0
         for quad in self.Quadruples:
             quad.line = line
             line += 1
-            if quad.dest[1] == 'loc' and quad.dest[0].startswith("B__"):
+            if quad.dest and quad.dest[1] == 'loc' and quad.dest[0].startswith("B__"):
                 quad.dest[0] = "B_{}_".format(self.id) + quad.dest[0][3:]
 
         if len(self.branch) != 0:
@@ -78,10 +88,8 @@ class Block(object):
                     else:
                         quad.dest[0] = 'B_{}_0'.format(self.branch[False])
 
-
-
     def show_quadruples(self):
-        print("block {}:>>>>>>>>>>>>>>>>>>>>>>".format(self.id))
+        print("\nquad for block {} >>>>>>>>>>>>>>>>>>>>>>".format(self.id))
         for item in self.Quadruples:
             print(item)
 
@@ -123,20 +131,23 @@ class Block(object):
             =[] x y z  (z = x[y])
 
         """
-
+        # 处理函数终点
+        if self.id == -1:
+            res.append(Quadruple("end", None, None, None))
         # 处理分支节点
-        if len(ast_nodes) == 1 and \
+        elif len(ast_nodes) == 1 and \
                 isinstance(ast_nodes[0], (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp)):
             res_bool = expr(ast_nodes[0], symtab, res, reg_pool)
             res.append(Quadruple('j=', res_bool, ['True', MyConstant('true', 'bool')], ["B_{}_0", 'loc']))
             res.append(Quadruple('j', None, None, ["B_{}_0", 'loc']))
 
         # 处理常规节点
-        for node in ast_nodes:
-            if isinstance(node, c_ast.Assignment):
-                assign(node, symtab, res, reg_pool)
-            elif isinstance(node, c_ast.Decl):
-                dec(node, symtab, res, reg_pool)
+        else:
+            for node in ast_nodes:
+                if isinstance(node, c_ast.Assignment):
+                    assign(node, symtab, res, reg_pool)
+                elif isinstance(node, c_ast.Decl):
+                    dec(node, symtab, res, reg_pool)
 
 
 # 处理assignment
@@ -232,7 +243,6 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, d
             arg1 = expr(node.left, symtab, res, reg_pool)
             arg2 = expr(node.right, symtab, res, reg_pool)
             tmp = reg_pool.get_reg(arg1[1].type)
-            print(">>>>>>>>>>>>>>>>>>  ", tmp[0])
             res.append(Quadruple(node.op, arg1, arg2, tmp))
             if isinstance(arg1[1], TmpValue):
                 reg_pool.release_reg(arg1[0])

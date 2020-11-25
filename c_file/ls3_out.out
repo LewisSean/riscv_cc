@@ -217,6 +217,55 @@ FileAST(ext=[Decl(name='a',
                                                                                 ]
                                                                     )
                                                    ),
+                                                While(cond=BinaryOp(op='<',
+                                                                    left=ID(name='a'
+                                                                            ),
+                                                                    right=Constant(type='int',
+                                                                                   value='100'
+                                                                                   )
+                                                                    ),
+                                                      stmt=Compound(block_items=[Assignment(op='=',
+                                                                                            lvalue=ID(name='a'
+                                                                                                      ),
+                                                                                            rvalue=BinaryOp(op='+',
+                                                                                                            left=ID(name='a'
+                                                                                                                    ),
+                                                                                                            right=ID(name='b'
+                                                                                                                     )
+                                                                                                            )
+                                                                                            ),
+                                                                                 Assignment(op='=',
+                                                                                            lvalue=ID(name='b'
+                                                                                                      ),
+                                                                                            rvalue=BinaryOp(op='+',
+                                                                                                            left=ID(name='b'
+                                                                                                                    ),
+                                                                                                            right=ID(name='c'
+                                                                                                                     )
+                                                                                                            )
+                                                                                            )
+                                                                                ]
+                                                                    )
+                                                      ),
+                                                Decl(name='aaa',
+                                                     quals=[
+                                                           ],
+                                                     storage=[
+                                                             ],
+                                                     funcspec=[
+                                                              ],
+                                                     type=TypeDecl(declname='aaa',
+                                                                   quals=[
+                                                                         ],
+                                                                   type=IdentifierType(names=['int'
+                                                                                             ]
+                                                                                       )
+                                                                   ),
+                                                     init=Constant(type='int',
+                                                                   value='1000'
+                                                                   ),
+                                                     bitsize=None
+                                                     ),
                                                 Return(expr=ID(name='c'
                                                                )
                                                        )

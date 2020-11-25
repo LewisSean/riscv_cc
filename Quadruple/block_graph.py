@@ -35,7 +35,26 @@ class FlowGraph(object):
         # 生成block有向图的核心函数
         self._gen_blocks([compound], [0], [-1])
         self._complete_graph()
+        self.quad_list = []
+        self.gen_quad_list(finished=set())
+        self._complete_quad_list()
         self.show()
+
+    def _complete_quad_list(self):
+        # 查找有分支的block，对分支block进行确定
+        # 默认最后两行为分支跳转
+        for k in self.blocks.keys():
+            if len(self.blocks[k].branch) != 0:
+                index = len(self.blocks[k].Quadruples) - 1
+                dest_id = int(self.blocks[k].Quadruples[index].dest[0][2:self.blocks[k].Quadruples[index].dest[0].rfind('_')])
+                self.blocks[k].Quadruples[index].dest[0] = 'L_{}'.format(self.blocks[dest_id].begin)
+                index = len(self.blocks[k].Quadruples) - 2
+                dest_id = int(self.blocks[k].Quadruples[index].dest[0][2:self.blocks[k].Quadruples[index].dest[0].rfind('_')])
+                self.blocks[k].Quadruples[index].dest[0] = 'L_{}'.format(self.blocks[dest_id].begin)
+            elif k != -1:
+                index = len(self.blocks[k].Quadruples) - 1
+                dest_id = int(self.blocks[k].Quadruples[index].dest[0][2:self.blocks[k].Quadruples[index].dest[0].rfind('_')])
+                self.blocks[k].Quadruples[index].dest[0] = 'L_{}'.format(self.blocks[dest_id].begin)
 
     # 包括完善前驱后继以及回填
     def _complete_graph(self):
@@ -66,8 +85,29 @@ class FlowGraph(object):
                     if b not in self.blocks[k].branch.keys():
                         self.blocks[k].branch[False] = b
 
+        # 回填四元组的跳转位置
         for k in self.blocks.keys():
             self.blocks[k].complete_quadruples()
+
+    def gen_quad_list(self, finished: set, cur_block=0, offset=0):
+        # 返回 self.blocks[cur_block].end
+        if cur_block in finished:
+            return offset
+        for quad in self.blocks[cur_block].Quadruples:
+            quad.line += offset
+
+        self.blocks[cur_block].begin = offset
+        self.blocks[cur_block].end = offset = offset + len(self.blocks[cur_block].Quadruples)
+
+        self.blocks[cur_block].adjust()
+        self.quad_list.extend(self.blocks[cur_block].Quadruples)
+        # offset是每个后继block的起始行
+        finished.add(cur_block)
+
+        for _suc in self.blocks[cur_block].suc:
+            offset = self.gen_quad_list(finished, _suc, offset)
+
+        return offset
 
     def show(self):
         print("\n\nblocks are as follows: \n")
@@ -82,7 +122,12 @@ class FlowGraph(object):
             # print("nodes>>>>")
             # for node in self.blocks[k].ast_nodes:
             #     print(str(type(node)))
+            self.blocks[k].show_quadruples()
             print('..................................')
+
+        print("\n\ntotal quads >>>>>>>>>>>>>>>>>>>>>>>>>>")
+        for quad in self.quad_list:
+            print(quad)
 
     def _get_id(self):
         """
@@ -367,5 +412,4 @@ if __name__ == '__main__':
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
             flowGraph = FlowGraph(ch, sts)
-            for k in flowGraph.blocks.keys():
-                flowGraph.blocks[k].show_quadruples()
+

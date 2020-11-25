@@ -18,6 +18,8 @@ class Quadruple(object):
 
     def __str__(self):
         line = str(self.line)+'. '
+        if self.dest is None:
+            return line+'{}, , , '.format(self.op)
         if self.arg1 is None:
             return line+"{}, , , {}".format(self.op, self.dest[0])
         if self.arg2 is None:
