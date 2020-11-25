@@ -174,7 +174,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
             if isinstance(left.expr, c_ast.ID):
                 sym = get_sym_by_id(left.expr, symtab)
                 dest = [left.expr.name, sym]
-                res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], dest))
+                res.append(Quadruple('[]=', arg1, ['0', MyConstant('0', sym.target_type)], dest))
 
             # case: *(p + 1) = 100
             elif isinstance(left.expr, c_ast.BinaryOp):
@@ -183,7 +183,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
                     sym = get_sym_by_id(_expr.left, symtab)
                     dest = [_expr.left.name, sym]
                     arg2 = expr(_expr.right, symtab, res, reg_pool)
-                    res.append(Quadruple('=[]', arg1, arg2, dest))
+                    res.append(Quadruple('[]=', arg1, arg2, dest))
 
 
 def get_sym_by_id(node, symtab):
@@ -252,7 +252,31 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, d
                 reg_pool.release_reg(arg1[0])
             return tmp
 
-        # - + ~(按位取反) !(逻辑非)  *  &(注意！！，保存的是地址)
+        elif node.op == '*':
+            # case: *p = 100
+            if isinstance(node.expr, c_ast.ID):
+                sym = get_sym_by_id(node.expr, symtab)
+                arg1 = [node.expr.name, sym]
+                tmp = reg_pool.get_reg(arg1[1].target_type)
+                res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], tmp))
+                # if isinstance(arg1[1], TmpValue):
+                #     reg_pool.release_reg(arg1[0])
+                return tmp
+            # case: *(p + 1) = 100
+            elif isinstance(node.expr, c_ast.BinaryOp):
+                _expr = node.expr
+                if isinstance(_expr.left, c_ast.ID):
+                    sym = get_sym_by_id(_expr.left, symtab)
+                    arg1 = [_expr.left.name, sym]
+                    arg2 = expr(_expr.right, symtab, res, reg_pool)
+                    tmp = reg_pool.get_reg(arg1[1].target_type)
+                    res.append(Quadruple('=[]', arg1, arg2, tmp))
+                    # if isinstance(arg1[1], TmpValue):
+                    #    reg_pool.release_reg(arg1[0])
+                    if isinstance(arg2[1], TmpValue):
+                        reg_pool.release_reg(arg2[0])
+                    return tmp
+        # - + ~(按位取反) !(逻辑非) &(注意！！，保存的是地址)
         else:
             arg1 = expr(node.expr, symtab, res, reg_pool)
             tmp = reg_pool.get_reg(arg1[1].type)

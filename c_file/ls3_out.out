@@ -110,6 +110,26 @@ FileAST(ext=[Decl(name='a',
                                                                            )
                                                            ),
                                                 Assignment(op='=',
+                                                           lvalue=UnaryOp(op='*',
+                                                                          expr=BinaryOp(op='+',
+                                                                                        left=ID(name='p'
+                                                                                                ),
+                                                                                        right=Constant(type='int',
+                                                                                                       value='1'
+                                                                                                       )
+                                                                                        )
+                                                                          ),
+                                                           rvalue=UnaryOp(op='*',
+                                                                          expr=BinaryOp(op='+',
+                                                                                        left=ID(name='p'
+                                                                                                ),
+                                                                                        right=Constant(type='int',
+                                                                                                       value='3'
+                                                                                                       )
+                                                                                        )
+                                                                          )
+                                                           ),
+                                                Assignment(op='=',
                                                            lvalue=ID(name='a'
                                                                      ),
                                                            rvalue=BinaryOp(op='+',
