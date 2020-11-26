@@ -153,16 +153,38 @@ class PointerSymbol(Symbol):
     target_size: 指向的元素的大小
     target_type: 指向的元素的类型名,str类型
     '''
-    def __init__(self, name, target_size, target_offset=None, offset_type=None, target_type=None):
-        super().__init__(name)
+    def __init__(self, name, target_size, target_type=None, **kwarg):
+        super().__init__(name, size=4, type_str='pointer', **kwarg)
         self.target_size = target_size
-        self.size = 4
         self.target_type = target_type
-        self.type = 'pointer'
     
     def __repr__(self):
         ans = super().__repr__()
         ans += ',t_sz=%d,t_type=%s'%(self.target_size,self.target_type)
+        return ans
+
+class ArraySymbol(Symbol):
+    '''
+    数组符号
+    size: 数组的总大小
+    element_type: 基本元素的类型
+    dims: list, 维度列表dim[i]是从左到右第i维
+    '''
+    def __init__(self, name, element_type, dims, **kwarg):
+        super().__init__(name, type_str = 'array', **kwarg)
+        self.element_type = element_type
+        self.dims = dims
+
+
+    def __repr__(self):
+        total = 1
+        dims_str=''
+        for d in self.dims:
+            total *= d
+            dims_str += '%d,'%d
+        dims_str = '['+dims_str[:-1]+']'
+        ans = super().__repr__()+',e_sz=%d,e_type=%s,dims=%s'%(
+            self.size//total,self.element_type,dims_str)
         return ans
 
     
@@ -212,6 +234,12 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     in_func = False
     in_struct = False
     current_symtab = None 
+    
+    def get_offset_type():
+        if in_func:
+            return OFFSET.LOCAL
+        else:
+            return OFFSET.GLOBAL
     # current_symtab是一个动态变化的变量,dfs下降或返回时它的内容发生改变,
     # 它的内容总是当前遍历过程中正在处理的节点的符号表
 
@@ -273,7 +301,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
                            同时存在,即在定义结构体的同时也定义了此类型的变量.
             (其他可能的返回值参见FuncDecl的dfs函数)
         '''
-        nonlocal offset
+        nonlocal offset, get_offset_type
 
         if u.init is not None:
             dfs(u.init)
@@ -283,14 +311,25 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
             return dfs(u.type)
 
         if type_name == 'PtrDecl':
-            x = dfs(u.type)['pointer_symbol']
-            x.offset = offset
+            res = dfs(u.type)
+            x = PointerSymbol(u.name, res['target_size'], res['target_type'],
+                offset=offset, offset_type=get_offset_type()
+            )
             offset += x.size
-            if in_func: x.offset_type = OFFSET.LOCAL
+            return {'symbol':x}
+
+        if type_name == 'ArrayDecl':
+            res = dfs(u.type)
+            size = res['size']
+            dims = res['dims']
+            total = res['total']
+            type_str = res['type']
+            x = ArraySymbol(u.name, type_str, dims, 
+                size=size*total, offset=offset, offset_type=get_offset_type())
+            offset += x.size
             return {'symbol':x}
 
         res = dfs(u.type)
-
 
         # 仅定义结构体而不声明变量则name=None
         if u.name is not None:
@@ -360,6 +399,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         '''
         return:
             size: 符号的size,以byte计
+            type: 符号的type(str),不忽略unsigned
         '''
         type_str = ' '.join(u.names)
 
@@ -449,7 +489,10 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def ptr_decl(u:c_ast.PtrDecl):
         '''
         返回
-        pointer_symbol: 一个PointerSymbol,没有offset,offset交由上级的Decl设置
+        target_size: 指向元素的size
+        target_type: 指向元素的type
+        size: 4(指针的大小)
+        type: 'pointer'
         '''
         res = dfs(u.type)
 
@@ -457,13 +500,29 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         target_size = res['size']
         target_type = res['type']
 
-        psym = PointerSymbol(name,target_size,target_type=target_type)
-
-        return {'pointer_symbol':psym}
+        return {'target_size': target_size,'target_type': target_type,'size':4,'type':'pointer'}
         
     @register('ArrayDecl')
     def array_decl(u:c_ast.ArrayDecl):
-        pass
+        '''
+        返回
+        size: 基本元素的size
+        type: 基本元素的type(str)
+        total: 基本元素的总个数
+        dim: 本维度大小
+        '''
+        dim = int(u.dim.value) # u.dim:Constant
+        res = dfs(u.type)
+        size = res['size']
+        type_str = res['type']
+        if isinstance(u.type, c_ast.ArrayDecl):
+            total = dim * res['total']
+            dims = [dim] + res['dims']
+        else:
+            total = dim
+            dims = [dim]
+        
+        return {'size':size,'type':type_str,'dims':dims,'total':total}
 
 
     @register('Assignment')
@@ -532,7 +591,7 @@ def gen_ast(file:str) -> c_ast.Node:
     return ast
 
 if __name__=='__main__':
-    file = './c_file/zc1.c'
+    file = './c_file/zc3.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
