@@ -2,7 +2,7 @@ from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
 from symtab import symtab_store, SymTab, SymTabStore
-from Quadruple.block import Block, RegPools
+from Quadruple.block import Block, RegPool
 
 
 class FlowGraph(object):
@@ -15,7 +15,7 @@ class FlowGraph(object):
         if not isinstance(node, c_ast.FuncDef):
             raise NotImplementedError('当前类型节点非FuncDef节点!')
 
-        self.reg_pool = RegPools()
+        self.reg_pool = RegPool()
         # bof 函数体的开始，用于判断是否是一个新的block开始，_is_new_block()用到
         self.bof = True
         # 增设entry和exit两个block(不包含实际四元组)，id分别为0和-1
