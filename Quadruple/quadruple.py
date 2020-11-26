@@ -1,11 +1,22 @@
+class TmpValue():
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+        self.is_addr = False  # 是否保存的是内存地址
+
+class MyConstant():
+    def __init__(self, value: str, type):
+        self.value = value
+        self.type = type
+
 class Quadruple(object):
     def __init__(self, op, arg1, arg2, dest):
 
         # 四元组
         self.op = op
-        self.arg1 = arg1
+        self.arg1 = arg1  # [name: str, type(Symbol\TmpValue\MyConstant)]
         self.arg2 = arg2
-        self.dest = dest
+        self.dest = dest  # ['L_xx': str, 'loc':str]
 
         # 行号
         self.line = -1
@@ -17,15 +28,25 @@ class Quadruple(object):
         return self.arg1 == arg or self.arg2 == arg
 
     def __str__(self):
-        line = str(self.line)+'. '
-        if self.dest is None:
-            return line+'{}, , , '.format(self.op)
-        if self.arg1 is None:
-            return line+"{}, , , {}".format(self.op, self.dest[0])
-        if self.arg2 is None:
-            return line+"{}, {}, , {}".format(self.op, self.arg1[0], self.dest[0])
-        else:
-            return line+"{}, {}, {}, {}".format(self.op, self.arg1[0], self.arg2[0], self.dest[0])
+        line = str(self.line)+'. '+self.op + '  '
+        back = '  '
+        if self.arg1:
+            line += self.arg1[0]
+            if isinstance(self.arg1[1], TmpValue) and self.arg1[1].is_addr == True:
+                back += '({} is addr) '.format(self.arg1[0])
+        line += ', '
+        if self.arg2:
+            line += self.arg2[0]
+            if isinstance(self.arg2[1], TmpValue) and self.arg2[1].is_addr == True:
+                back += '({} is addr) '.format(self.arg2[0])
+        line += ', '
+
+        if self.dest:
+            line += self.dest[0]
+            if isinstance(self.dest[1], TmpValue) and self.dest[1].is_addr == True:
+                back += '({} is addr) '.format(self.dest[0])
+
+        return line + back
 
     def __repr__(self):
         return str(self)

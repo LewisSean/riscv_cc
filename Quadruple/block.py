@@ -2,24 +2,11 @@ from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
 from symtab import symtab_store, SymTab, SymTabStore
-from Quadruple.quadruple import Quadruple
+from Quadruple.quadruple import Quadruple, TmpValue, MyConstant
 import re
 
 
-class MyConstant():
-    def __init__(self, value: str, type):
-        self.value = value
-        self.type = type
-
-
-class TmpValue():
-    def __init__(self, name, type):
-        self.name = name
-        self.type = type
-        self.is_addr = False  # 是否保存的是内存地址
-
-
-class RegPools(dict):
+class RegPool(dict):
     def __init__(self, num=32):
         super().__init__()
         self.num = num
@@ -93,7 +80,7 @@ class Block(object):
         for item in self.Quadruples:
             print(item)
 
-    def gen_quadruples(self, ast_nodes: list, symtab: SymTabStore, res: list, reg_pool: RegPools):
+    def gen_quadruples(self, ast_nodes: list, symtab: SymTabStore, res: list, reg_pool: RegPool):
         """
         四元组： op arg1 arg2 dest
         生成四元组的要求：
@@ -151,7 +138,7 @@ class Block(object):
 
 
 # 处理assignment
-def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: RegPools):
+def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: RegPool):
 
     """
     先处理rvalue，处理lvalue，再执行赋值运算
@@ -168,7 +155,11 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
         sym = symtab.get_symtab_of(left).get_symbol(left.name)
         dest = (left.name, sym)
         res.append(Quadruple(node.op, arg1, None, dest))
+
     elif isinstance(left, c_ast.UnaryOp):
+        """
+        处理指针的说明，如果一个符号是指针，那么它的symbol的type是pointer，其类型是target_type
+        """
         if left.op == '*':
             # case: *p = 100
             if isinstance(left.expr, c_ast.ID):
@@ -191,8 +182,9 @@ def get_sym_by_id(node, symtab):
     sym = t.get_symbol(node.name)
     return sym
 
+
 # 处理dec
-def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
+def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
 
     # 先处理右值
     if node.init is None:
@@ -225,7 +217,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPools):
 
 
 # 处理右值！！！！
-def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPools, dest = None):
+def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, dest = None):
     if isinstance(node, (c_ast.Constant,)):
         node.show(attrnames=True, nodenames=True, showcoord=True)
         return node.value, MyConstant(node.value, node.type)
