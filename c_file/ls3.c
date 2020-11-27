@@ -1,15 +1,7 @@
 int a = 1000;
 int main(int c ,int b){
-int *p = &a;
-*(p+1) = 1000;
-*(p+1) = *(p + 3);
-a = a + c * &b;
-while(a < 100){
-while(c > 100){
-c = a + 100;
-a = 10000;
-}
-}
-int aaa = 1000;
+int c[2][3] = {1,2,3,4,5,6};
+int a[5] = {1,2,3,4,5};
+c[1][2] = a[4];
 return c;
 }

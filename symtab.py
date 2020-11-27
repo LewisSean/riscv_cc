@@ -174,7 +174,9 @@ class ArraySymbol(Symbol):
         super().__init__(name, type_str = 'array', **kwarg)
         self.element_type = element_type
         self.dims = dims
-
+        self.ks = [1]
+        for i in range(len(self.dims)-1, 0, -1):
+            self.ks.append(self.ks[-1] * self.dims[i])
 
     def __repr__(self):
         total = 1
@@ -580,6 +582,15 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def Cast(u:c_ast.Cast):
         dfs(u.to_type)
         dfs(u.expr)
+
+    @register('InitList')
+    def Cast(u:c_ast.InitList):
+        pass
+
+    @register('ArrayRef')
+    def Cast(u:c_ast.ArrayRef):
+        dfs(u.name)
+        dfs(u.subscript)
 
     dfs(ast)
     return sts
