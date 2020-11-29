@@ -104,9 +104,8 @@ class StructSymbol(Symbol):
     size: 结构体的总大小
     member_symtab: 成员变量符号表
     '''
-    def __init__(self, name):
-        super().__init__(name)
-        self.offset_type = OFFSET.LOCAL
+    def __init__(self, name, **kwarg):
+        super().__init__(name, offset_type=OFFSET.LOCAL, type_str='struct', **kwarg)
         self.member_symtab = SymTab(None)
 
     def get_member_symbol(self, name:str) -> Symbol:
@@ -498,7 +497,6 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         '''
         res = dfs(u.type)
 
-        name = u.type.declname
         target_size = res['size']
         target_type = res['type']
 
