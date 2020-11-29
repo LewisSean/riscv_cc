@@ -231,7 +231,7 @@ def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore
     cur = node
     while isinstance(cur, c_ast.UnaryOp) or isinstance(cur, c_ast.BinaryOp):
         if isinstance(cur, c_ast.UnaryOp):
-            subscripts.append(['0', MyConstant('0', None)])
+            # subscripts.append(['0', MyConstant('0', None)])
             cur = cur.expr
         elif isinstance(cur, c_ast.BinaryOp):
             tmp = expr(cur.right, symtab, res, reg_pool)
@@ -364,26 +364,29 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
             if isinstance(node.expr, c_ast.ID):
                 sym = get_sym_by_id(node.expr, symtab)
                 arg1 = [node.expr.name, sym]
-                # 处理一级指针
-                if sym.type == 'pointer(1)':
-                    tmp = reg_pool.get_reg(sym.target_type)
-                    res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], tmp))
 
-                # 处理数组
+                if sym.type == 'pointer':
+                    # 处理一级指针
+                    if sym.level == 1:
+                        tmp = reg_pool.get_reg('int')
+                        res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', 'int')], tmp))
+
+                    # 处理二级指针，返回的是指针变量当前保存的地址！！！！
+                    elif sym.level == 2:
+                        tmp = reg_pool.get_reg('int')
+                        res.append(Quadruple('=', arg1, None, tmp))
+                        tmp[1].is_addr = True
+
+                # 处理数组 如：p = *array
                 if sym.type == 'array':
-                    pass
-
-                # 处理二级指针，返回的是指针变量当前保存的地址！！！！
-                elif sym.type == 'pointer(2)':
-                    tmp = reg_pool.get_reg(sym.target_type)
-                    res.append(Quadruple('=', arg1, None, tmp))
-                    tmp[1].is_addr = True
-
+                    tmp = reg_pool.get_reg('int')
+                    get_ArrayRef_by_star(node, 0, tmp, symtab, res, reg_pool)
 
                 return tmp
 
             # case: tmp = *(p + 1)
             elif isinstance(node.expr, c_ast.BinaryOp):
+                '''
                 _expr = node.expr
                 if isinstance(_expr.left, c_ast.ID):
                     sym = get_sym_by_id(_expr.left, symtab)
@@ -396,6 +399,10 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
                     if isinstance(arg2[1], TmpValue):
                         reg_pool.release_reg(arg2[0])
                     return tmp
+                '''
+                tmp = reg_pool.get_reg('int')
+                get_ArrayRef_by_star(node, 0, tmp, symtab, res, reg_pool)
+                return tmp
         # - + ~(按位取反) !(逻辑非) &(注意！！，保存的是地址)
         else:
             arg1 = expr(node.expr, symtab, res, reg_pool)
@@ -454,7 +461,7 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
     # 处理右值的数组引用
     elif isinstance(node, c_ast.ArrayRef):
         sym = get_sym_by_id(node, symtab)
-        tmp = reg_pool.get_reg(sym.element_type)
+        tmp = reg_pool.get_reg('int')
         get_ArrayRef(node, 0, tmp, symtab, res, reg_pool)
         return tmp
 
