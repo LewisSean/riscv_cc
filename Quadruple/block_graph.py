@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
