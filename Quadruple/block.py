@@ -149,7 +149,8 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
     """
     # 先处理右值
     arg1 = expr(node.rvalue, symtab, res, reg_pool)
-    # 处理左值
+
+    # 再处理左值
     left = node.lvalue
     if isinstance(left, c_ast.ID):
         sym = symtab.get_symtab_of(left).get_symbol(left.name)
@@ -179,18 +180,20 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
     elif isinstance(left, c_ast.ArrayRef):
         get_ArrayRef(left, 1, arg1, symtab, res, reg_pool)
 
-    # 释放可能的右值中间变量
+    # 函数结束，释放可能的右值中间变量
     if isinstance(arg1[1], TmpValue):
         reg_pool.release_reg(arg1[0])
 
-
+# 处理 a[x][y]
 def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
     # mode 1 写地址 arg是arg1   0 读地址 arg是dest
-    sym = get_sym_by_id(node, symtab)
-    dest = [sym.name, sym]
     # 确定维度
     # array[2][3] dims = [2,3]
     # arr[x][y][z]  ----> i * y * z + j * z + k  递推关系
+    '''
+    sym = get_sym_by_id(node, symtab)
+    dest = [sym.name, sym]
+
     ks = sym.ks
     index = 0
     offset = reg_pool.get_reg(sym.element_type)
@@ -210,6 +213,75 @@ def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: 
     elif mode == 0:
         res.append(Quadruple('=[]', dest, offset, pass_arg))
     reg_pool.release_reg(offset[0])
+    '''
+    subscripts = []
+    cur = node
+    while  not isinstance(cur.name, str):
+        tmp = expr(cur.subscript, symtab, res, reg_pool)
+        subscripts.append(tmp)
+        cur = cur.name
+
+    sym = get_sym_by_id(cur, symtab)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool)
+
+
+# 处理 *(*(arr+1)+1)   *(p+1) 等*对数组的运算
+def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
+    subscripts = []
+    cur = node
+    while isinstance(cur, c_ast.UnaryOp) or isinstance(cur, c_ast.BinaryOp):
+        if isinstance(cur, c_ast.UnaryOp):
+            subscripts.append(['0', MyConstant('0', None)])
+            cur = cur.expr
+        elif isinstance(cur, c_ast.BinaryOp):
+            tmp = expr(cur.right, symtab, res, reg_pool)
+            subscripts.append(tmp)
+            cur = cur.left
+
+    sym = get_sym_by_id(cur, symtab)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool)
+
+
+def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
+    dest = [sym.name, sym]
+    # 传递的是地址
+    if len(subscripts) != len(sym.dims):
+        is_addr = True
+    else:
+        is_addr = False
+
+    index = -1
+    offset = reg_pool.get_reg('int')
+    res.append(Quadruple('=', ['0', MyConstant('0', 'int')], None, offset))
+    for i in range(len(subscripts)):
+        tmp = reg_pool.get_reg('int')
+        subscripts[index][1].type = 'int'
+        res.append(
+            Quadruple('*', subscripts[index], [str(sym.ks[index]), MyConstant(str(sym.ks[index]), 'int')], tmp))
+        res.append(Quadruple('+=', tmp, None, offset))
+        reg_pool.release_reg(tmp[0])
+        index -= 1
+
+    _size = str(sym.element_size)
+    res.append(Quadruple('*', offset, [_size, MyConstant(_size, 'int')], offset))
+
+    for item in subscripts:
+        if isinstance(item[1], TmpValue):
+            reg_pool.release_reg(item[0])
+
+    if not is_addr:
+        if mode == 1:
+            res.append(Quadruple('[]=', pass_arg, offset, dest))
+        elif mode == 0:
+            res.append(Quadruple('=[]', dest, offset, pass_arg))
+
+    else:
+        if mode == 0:
+            tmp = reg_pool.get_reg('int')
+            res.append(Quadruple('+', dest, offset, tmp))
+            res.append(Quadruple('=', tmp, None, pass_arg))
+            reg_pool.release_reg(tmp[0])
+    reg_pool.release_reg(offset[0])
 
 
 def get_sym_by_id(node, symtab):
@@ -226,7 +298,8 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     # 先处理右值
     if node.init is None:
         return
-    if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp, c_ast.TernaryOp, c_ast.InitList)):
+    if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp,\
+                              c_ast.TernaryOp, c_ast.InitList, c_ast.ArrayRef)):
         arg1 = expr(node.init, symtab, res, reg_pool)
     else:
         pass
@@ -237,21 +310,18 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     sym = get_sym_by_id(node, symtab)
     dest = [sym.name, sym]
 
-
     # 得到四元组
     # 直接赋值
     if not isinstance(node.init, c_ast.InitList):
-        if dest[1].type != 'pointer':
-            res.append(Quadruple('=', arg1, None, dest))
-        elif dest[1].type == 'pointer':
-            res.append(Quadruple('[]=', arg1, ['0', MyConstant('0', dest[1].target_type)], dest))
+        res.append(Quadruple('=', arg1, None, dest))
+
     # 连续赋值，对于struct和array
     elif isinstance(node.init, c_ast.InitList):
         if isinstance(left, c_ast.ArrayDecl):
             for i, arg in enumerate(arg1):
                 res.append(Quadruple('[]=', arg, [str(i), MyConstant(str(i), dest[1].element_type)], dest))
 
-    # 释放可能的右值中间变量
+    # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
         for arg in arg1:
             if isinstance(arg[1], TmpValue):
@@ -260,7 +330,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
         reg_pool.release_reg(arg1[0])
 
 
-# 处理右值！！！！
+# 处理右值表达式！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, dest = None):
     if isinstance(node, (c_ast.Constant,)):
         node.show(attrnames=True, nodenames=True, showcoord=True)
@@ -288,17 +358,31 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
                 reg_pool.release_reg(arg1[0])
             return tmp
 
+        # 处理指针运算，注意二级指针
         elif node.op == '*':
-            # case: *p = 100
+            # case: tmp = *p
             if isinstance(node.expr, c_ast.ID):
                 sym = get_sym_by_id(node.expr, symtab)
                 arg1 = [node.expr.name, sym]
-                tmp = reg_pool.get_reg(arg1[1].target_type)
-                res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], tmp))
-                # if isinstance(arg1[1], TmpValue):
-                #     reg_pool.release_reg(arg1[0])
+                # 处理一级指针
+                if sym.type == 'pointer(1)':
+                    tmp = reg_pool.get_reg(sym.target_type)
+                    res.append(Quadruple('=[]', arg1, ['0', MyConstant('0', sym.target_type)], tmp))
+
+                # 处理数组
+                if sym.type == 'array':
+                    pass
+
+                # 处理二级指针，返回的是指针变量当前保存的地址！！！！
+                elif sym.type == 'pointer(2)':
+                    tmp = reg_pool.get_reg(sym.target_type)
+                    res.append(Quadruple('=', arg1, None, tmp))
+                    tmp[1].is_addr = True
+
+
                 return tmp
-            # case: *(p + 1) = 100
+
+            # case: tmp = *(p + 1)
             elif isinstance(node.expr, c_ast.BinaryOp):
                 _expr = node.expr
                 if isinstance(_expr.left, c_ast.ID):
@@ -324,7 +408,7 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
             return tmp
 
     elif isinstance(node, (c_ast.BinaryOp, )):
-        if node.op not in ('>=', '>','==', '<=', '<', '!='):
+        if node.op not in ('>=', '>', '==', '<=', '<', '!='):
             arg1 = expr(node.left, symtab, res, reg_pool)
             arg2 = expr(node.right, symtab, res, reg_pool)
             tmp = reg_pool.get_reg(arg1[1].type)

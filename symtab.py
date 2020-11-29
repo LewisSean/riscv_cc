@@ -174,6 +174,7 @@ class ArraySymbol(Symbol):
         super().__init__(name, type_str = 'array', **kwarg)
         self.element_type = element_type
         self.dims = dims
+        self.element_size = BasicSymbol.SIZE_OF[element_type]
         self.ks = [1]
         for i in range(len(self.dims)-1, 0, -1):
             self.ks.append(self.ks[-1] * self.dims[i])
