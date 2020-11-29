@@ -152,14 +152,15 @@ class PointerSymbol(Symbol):
     target_size: 指向的元素的大小
     target_type: 指向的元素的类型名,str类型
     '''
-    def __init__(self, name, target_size, target_type=None, **kwarg):
+    def __init__(self, name, target_size, target_type=None, level=1, **kwarg):
         super().__init__(name, size=4, type_str='pointer', **kwarg)
         self.target_size = target_size
         self.target_type = target_type
+        self.level = level
     
     def __repr__(self):
         ans = super().__repr__()
-        ans += ',t_sz=%d,t_type=%s'%(self.target_size,self.target_type)
+        ans += '(%d),t_sz=%d,t_type=%s'%(self.level,self.target_size,self.target_type)
         return ans
 
 class ArraySymbol(Symbol):
@@ -313,7 +314,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
         if type_name == 'PtrDecl':
             res = dfs(u.type)
-            x = PointerSymbol(u.name, res['target_size'], res['target_type'],
+            x = PointerSymbol(u.name, res['target_size'], res['target_type'],level=res['level'],
                 offset=offset, offset_type=get_offset_type()
             )
             offset += x.size
@@ -496,11 +497,16 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         type: 'pointer'
         '''
         res = dfs(u.type)
+        if res.get('target_size') is not None: # 说明下一级仍然是指针
+            target_size = res['target_size']
+            target_type = res['target_type']
+            level = res['level'] + 1
+        else:
+            target_size = res['size']
+            target_type = res['type']
+            level = 1
 
-        target_size = res['size']
-        target_type = res['type']
-
-        return {'target_size': target_size,'target_type': target_type,'size':4,'type':'pointer'}
+        return {'target_size': target_size,'target_type': target_type,'size':4,'type':'pointer','level':level}
         
     @register('ArrayDecl')
     def array_decl(u:c_ast.ArrayDecl):
