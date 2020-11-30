@@ -149,8 +149,9 @@ class PointerSymbol(Symbol):
     '''
     指针符号
     size: 指针的大小,所有指针的大小都是固定的4byte
-    target_size: 指向的元素的大小
-    target_type: 指向的元素的类型名,str类型
+    target_size: 最终指向的元素的大小
+    target_type: 最终指向的元素的类型名,str类型
+    level: 指针级数 从1开始
     '''
     def __init__(self, name, target_size, target_type=None, level=1, **kwarg):
         super().__init__(name, size=4, type_str='pointer', **kwarg)
@@ -287,7 +288,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         t = sts.get_symtab_of(u)
         for v in u.ext:
             res = dfs(v)
-            t.add_symbol(res['symbol'])
+            if res.get('symbol') is not None:
+                t.add_symbol(res['symbol'])
             if res.get('struct_symbol') is not None:
                 t.add_symbol(res['struct_symbol'])
     
@@ -333,6 +335,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
             return {'symbol':x}
 
         res = dfs(u.type)
+
+        x = None
 
         # 仅定义结构体而不声明变量则name=None
         if u.name is not None:
