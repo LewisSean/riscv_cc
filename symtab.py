@@ -107,6 +107,7 @@ class StructSymbol(Symbol):
     def __init__(self, name, **kwarg):
         super().__init__(name, offset_type=OFFSET.LOCAL, type_str='struct', **kwarg)
         self.member_symtab = SymTab(None)
+        self.element_paths = []
 
     def get_member_symbol(self, name:str) -> Symbol:
         return self.member_symtab.get_symbol(name)
@@ -601,6 +602,12 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     def Cast(u:c_ast.ArrayRef):
         dfs(u.name)
         dfs(u.subscript)
+
+    @register('StructRef')
+    def Cast(u:c_ast.StructRef):
+        dfs(u.name)
+        dfs(u.field)
+
 
     dfs(ast)
     return sts

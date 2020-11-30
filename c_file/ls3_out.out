@@ -196,6 +196,50 @@ FileAST(ext=[Decl(name=None,
                                                                    ),
                                                      bitsize=None
                                                      ),
+                                                Assignment(op='=',
+                                                           lvalue=StructRef(name=StructRef(name=ID(name='l'
+                                                                                                   ),
+                                                                                           type='.',
+                                                                                           field=ID(name='a'
+                                                                                                    )
+                                                                                           ),
+                                                                            type='.',
+                                                                            field=ID(name='x'
+                                                                                     )
+                                                                            ),
+                                                           rvalue=Constant(type='int',
+                                                                           value='100'
+                                                                           )
+                                                           ),
+                                                Assignment(op='=',
+                                                           lvalue=StructRef(name=StructRef(name=ID(name='l'
+                                                                                                   ),
+                                                                                           type='.',
+                                                                                           field=ID(name='b'
+                                                                                                    )
+                                                                                           ),
+                                                                            type='.',
+                                                                            field=ID(name='y'
+                                                                                     )
+                                                                            ),
+                                                           rvalue=Constant(type='int',
+                                                                           value='10000'
+                                                                           )
+                                                           ),
+                                                Assignment(op='=',
+                                                           lvalue=ID(name='c'
+                                                                     ),
+                                                           rvalue=StructRef(name=StructRef(name=ID(name='l'
+                                                                                                   ),
+                                                                                           type='.',
+                                                                                           field=ID(name='a'
+                                                                                                    )
+                                                                                           ),
+                                                                            type='.',
+                                                                            field=ID(name='y'
+                                                                                     )
+                                                                            )
+                                                           ),
                                                 Decl(name='c',
                                                      quals=[
                                                            ],

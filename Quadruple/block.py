@@ -180,9 +180,13 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
     elif isinstance(left, c_ast.ArrayRef):
         get_ArrayRef(left, 1, arg1, symtab, res, reg_pool)
 
+    elif isinstance(left, c_ast.StructRef):
+        get_structRef(left, 1, arg1, symtab, res, reg_pool)
+
     # 函数结束，释放可能的右值中间变量
     if isinstance(arg1[1], TmpValue):
         reg_pool.release_reg(arg1[0])
+
 
 # 处理 a[x][y]
 def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
@@ -289,7 +293,7 @@ def get_sym_by_id(node, symtab):
     while not isinstance(node.name, str):
         node = node.name
     if isinstance(node, c_ast.Struct) and not node.name.startswith('struct'):
-        node.name = 'struct '+ node.name
+        node.name = 'struct ' + node.name
     sym = t.get_symbol(node.name)
     return sym
 
@@ -326,10 +330,12 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
 
         if isinstance(left.type, c_ast.Struct):
             sym = get_sym_by_id(left.type, symtab)
-            elements = []
-            sequence_struct(sym, [0], node, elements, symtab)
+            pre = []
+            sequence_struct(sym, [0], node, sym.element_paths, symtab, pre)
             for i, arg in enumerate(arg1):
-                res.append(Quadruple('[]=', arg, [str(elements[i][0]), MyConstant(str(elements[i][0]), "int")], dest))
+                res.append(Quadruple('[]=', arg,
+                                     [str(sym.element_paths[i][0]), MyConstant(str(sym.element_paths[i][0]), "int")],
+                                     dest))
 
     # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
@@ -339,17 +345,51 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     elif isinstance(arg1[1], TmpValue):
         reg_pool.release_reg(arg1[0])
 
+
+def get_sym_by_name(node, name: str, symtab):
+    t: SymTab = symtab.get_symtab_of(node)
+    sym = t.get_symbol(name)
+    return sym
+
+
+def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool):
+    # mode 1 写地址
+    path = []
+    while not isinstance(node.name, str):
+        path.append(node.field.name)
+        node = node.name
+    sym = get_sym_by_id(node, symtab)
+    sym_struct = get_sym_by_name(node, sym.type, symtab)
+    path = path[::-1]
+    target_item = None
+    for item in sym_struct.element_paths:
+        if path == item[2]:
+            target_item = item
+            break
+    offset = str(target_item[0])
+    if mode == 1:
+        res.append(Quadruple('[]=', pass_arg, [offset, MyConstant(offset, 'int')], [sym.name, sym]))
+
+    elif mode == 0:
+        res.append(Quadruple('=[]', [sym.name, sym], [offset, MyConstant(offset, 'int')], pass_arg))
+
+
 # 将struct的元素一维化，解决struct嵌套struct问题
-# 返回list[arg]
-def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab):
+# 返回res[arg]
+def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab, pre):
     for k in sym.member_symtab.keys():
         if not sym.member_symtab[k].type.startswith('struct'):
-            res.append((offset[-1], [k, sym.member_symtab[k]]))
+            pre.append(k)
+            res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre)))
+            pre.pop()
             offset.append(offset[-1]+sym.member_symtab[k].size)
         else:
             t: SymTab = symtab.get_symtab_of(node)
             new_sym = t.get_symbol(sym.member_symtab[k].type)
-            sequence_struct(new_sym, offset, node, res, symtab)
+            pre.append(k)
+            sequence_struct(new_sym, offset, node, res, symtab, pre)
+            pre.pop()
+
 
 # 处理右值表达式！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, dest = None):
@@ -467,9 +507,13 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
 
     # 处理右值的数组引用
     elif isinstance(node, c_ast.ArrayRef):
-        sym = get_sym_by_id(node, symtab)
         tmp = reg_pool.get_reg('int')
         get_ArrayRef(node, 0, tmp, symtab, res, reg_pool)
+        return tmp
+
+    elif isinstance(node, c_ast.StructRef):
+        tmp = reg_pool.get_reg('int')
+        get_structRef(node, 0, tmp, symtab, res, reg_pool)
         return tmp
 
     elif isinstance(node, c_ast.InitList):
