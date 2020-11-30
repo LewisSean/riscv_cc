@@ -1,4 +1,98 @@
-FileAST(ext=[Decl(name='a',
+FileAST(ext=[Decl(name=None,
+                  quals=[
+                        ],
+                  storage=[
+                          ],
+                  funcspec=[
+                           ],
+                  type=Struct(name='point',
+                              decls=[Decl(name='x',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='x',
+                                                        quals=[
+                                                              ],
+                                                        type=IdentifierType(names=['int'
+                                                                                  ]
+                                                                            )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
+                                          ),
+                                     Decl(name='y',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='y',
+                                                        quals=[
+                                                              ],
+                                                        type=IdentifierType(names=['int'
+                                                                                  ]
+                                                                            )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
+                                          )
+                                    ]
+                              ),
+                  init=None,
+                  bitsize=None
+                  ),
+             Decl(name=None,
+                  quals=[
+                        ],
+                  storage=[
+                          ],
+                  funcspec=[
+                           ],
+                  type=Struct(name='line',
+                              decls=[Decl(name='a',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='a',
+                                                        quals=[
+                                                              ],
+                                                        type=Struct(name='point',
+                                                                    decls=None
+                                                                    )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
+                                          ),
+                                     Decl(name='b',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='b',
+                                                        quals=[
+                                                              ],
+                                                        type=Struct(name='point',
+                                                                    decls=None
+                                                                    )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
+                                          )
+                                    ]
+                              ),
+                  init=None,
+                  bitsize=None
+                  ),
+             Decl(name='a',
                   quals=[
                         ],
                   storage=[
@@ -72,27 +166,34 @@ FileAST(ext=[Decl(name='a',
                                bitsize=None
                                ),
                      param_decls=None,
-                     body=Compound(block_items=[Decl(name='p',
+                     body=Compound(block_items=[Decl(name='l',
                                                      quals=[
                                                            ],
                                                      storage=[
                                                              ],
                                                      funcspec=[
                                                               ],
-                                                     type=PtrDecl(quals=[
-                                                                        ],
-                                                                  type=PtrDecl(quals=[
-                                                                                     ],
-                                                                               type=TypeDecl(declname='p',
-                                                                                             quals=[
-                                                                                                   ],
-                                                                                             type=IdentifierType(names=['int'
-                                                                                                                       ]
-                                                                                                                 )
-                                                                                             )
+                                                     type=TypeDecl(declname='l',
+                                                                   quals=[
+                                                                         ],
+                                                                   type=Struct(name='line',
+                                                                               decls=None
                                                                                )
-                                                                  ),
-                                                     init=None,
+                                                                   ),
+                                                     init=InitList(exprs=[Constant(type='int',
+                                                                                   value='1'
+                                                                                   ),
+                                                                          Constant(type='int',
+                                                                                   value='2'
+                                                                                   ),
+                                                                          Constant(type='int',
+                                                                                   value='3'
+                                                                                   ),
+                                                                          Constant(type='int',
+                                                                                   value='4'
+                                                                                   )
+                                                                         ]
+                                                                   ),
                                                      bitsize=None
                                                      ),
                                                 Decl(name='c',

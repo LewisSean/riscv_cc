@@ -1,6 +1,9 @@
+struct point { int x;int y;};
+struct line { struct point a;struct point b; };
 int a = 1000;
 int main(int c ,int b){
-int **p;
+struct line l = { 1,2,3,4 };
+
 int c[2][3] = {1,2,3,4,5,6};
 int a[5] = {1,2,3,4,5};
 int k = *(*(c+1)+2);

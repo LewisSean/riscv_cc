@@ -594,7 +594,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('InitList')
     def Cast(u:c_ast.InitList):
-        pass
+        for expr in u.exprs:
+            dfs(expr)
 
     @register('ArrayRef')
     def Cast(u:c_ast.ArrayRef):

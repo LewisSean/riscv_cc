@@ -1,7 +1,7 @@
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
-from symtab import symtab_store, SymTab, SymTabStore
+from symtab import symtab_store, SymTab, SymTabStore, StructSymbol
 from Quadruple.quadruple import Quadruple, TmpValue, MyConstant
 import re
 
@@ -288,6 +288,8 @@ def get_sym_by_id(node, symtab):
     t: SymTab = symtab.get_symtab_of(node)
     while not isinstance(node.name, str):
         node = node.name
+    if isinstance(node, c_ast.Struct) and not node.name.startswith('struct'):
+        node.name = 'struct '+ node.name
     sym = t.get_symbol(node.name)
     return sym
 
@@ -318,8 +320,16 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     # 连续赋值，对于struct和array
     elif isinstance(node.init, c_ast.InitList):
         if isinstance(left, c_ast.ArrayDecl):
+            interval = dest[1].element_size
             for i, arg in enumerate(arg1):
-                res.append(Quadruple('[]=', arg, [str(i), MyConstant(str(i), dest[1].element_type)], dest))
+                res.append(Quadruple('[]=', arg, [str(i*interval), MyConstant(str(i*interval), "int")], dest))
+
+        if isinstance(left.type, c_ast.Struct):
+            sym = get_sym_by_id(left.type, symtab)
+            elements = []
+            sequence_struct(sym, [0], node, elements, symtab)
+            for i, arg in enumerate(arg1):
+                res.append(Quadruple('[]=', arg, [str(elements[i][0]), MyConstant(str(elements[i][0]), "int")], dest))
 
     # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
@@ -329,6 +339,17 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     elif isinstance(arg1[1], TmpValue):
         reg_pool.release_reg(arg1[0])
 
+# 将struct的元素一维化，解决struct嵌套struct问题
+# 返回list[arg]
+def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab):
+    for k in sym.member_symtab.keys():
+        if not sym.member_symtab[k].type.startswith('struct'):
+            res.append((offset[-1], [k, sym.member_symtab[k]]))
+            offset.append(offset[-1]+sym.member_symtab[k].size)
+        else:
+            t: SymTab = symtab.get_symtab_of(node)
+            new_sym = t.get_symbol(sym.member_symtab[k].type)
+            sequence_struct(new_sym, offset, node, res, symtab)
 
 # 处理右值表达式！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, dest = None):
@@ -386,20 +407,6 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
 
             # case: tmp = *(p + 1)
             elif isinstance(node.expr, c_ast.BinaryOp):
-                '''
-                _expr = node.expr
-                if isinstance(_expr.left, c_ast.ID):
-                    sym = get_sym_by_id(_expr.left, symtab)
-                    arg1 = [_expr.left.name, sym]
-                    arg2 = expr(_expr.right, symtab, res, reg_pool)
-                    tmp = reg_pool.get_reg(arg1[1].target_type)
-                    res.append(Quadruple('=[]', arg1, arg2, tmp))
-                    # if isinstance(arg1[1], TmpValue):
-                    #    reg_pool.release_reg(arg1[0])
-                    if isinstance(arg2[1], TmpValue):
-                        reg_pool.release_reg(arg2[0])
-                    return tmp
-                '''
                 tmp = reg_pool.get_reg('int')
                 get_ArrayRef_by_star(node, 0, tmp, symtab, res, reg_pool)
                 return tmp
