@@ -608,6 +608,13 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         dfs(u.name)
         dfs(u.field)
 
+    @register('Break')
+    def Cast(u:c_ast.Break):
+        pass
+
+    @register('Continue')
+    def Cast(u:c_ast.Continue):
+        pass
 
     dfs(ast)
     return sts

@@ -79,6 +79,7 @@ class FlowGraph(object):
                     for i in self.blocks.keys():
                         if self.blocks[i].name == _name:
                             self.blocks[i].loop_end = k
+                            self.blocks[i].loop_cond = pre
 
         # 回填branch
         for k in self.blocks.keys():
@@ -233,16 +234,6 @@ class FlowGraph(object):
                         flag = False
 
                 # 对当前列表的每个item，递归调用
-                '''
-                out_stmt = deepcopy(pres)
-                flag = True
-                for item in blocks_list:
-                    tmp, out_stmt = self._gen_blocks(item, out_stmt, loop_id=loop_id)
-                    if flag:
-                        in_stmt = deepcopy(tmp)
-                        flag = False
-                    # print("new blocks for compound are {}".format(str(out_stmt)))
-                '''
 
                 if sucs is not None:
                     for suc in sucs:
@@ -324,9 +315,7 @@ class FlowGraph(object):
         :param node:
         :return:它的下一个block的leaders，list   否则返回None
         """
-        if isinstance(node, c_ast.Goto):
-            return True
-        if isinstance(node, c_ast.Return):
+        if isinstance(node, (c_ast.Goto, c_ast.Return, c_ast.Continue, c_ast.Break)):
             return True
         return False
 
@@ -375,13 +364,13 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    file = '../c_file/ls3.c'
+    file = '../c_file/ls2.c'
     parser = CParser()
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)
         # ast.show()
-        with open('../c_file/ls3_out.out', 'w') as f:
-            f.write(str(ast))
+        with open('../c_file/ls2_out.out', 'w') as f:
+           f.write(str(ast))
 
     sts = symtab_store(ast)
     sts.show(ast)

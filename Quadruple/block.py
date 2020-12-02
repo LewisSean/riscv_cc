@@ -47,25 +47,33 @@ class Block(object):
         # branch是一个字典，branch[1] = True 表示block如果计算为True,后继block的id是1，用于处理iF.cond和while.cond节点
         # 如果当前的block是循环体的stmt中的一个block，则loop_end保存从它跳出循环的下一个block的id，用于break
         self.loop_end = None
+        self.loop_cond = None
         # block的命名，cond_id表示是循环体id的判断节点，loop_id表示是循环体id的循环块（多个位于相同循环体内的block共享一个循环体id）
         self.name = ""
 
     def adjust(self):
         for quad in self.Quadruples:
-            if quad.dest and quad.dest[1] == 'loc' and quad.dest[0].startswith('B_{}'.format(self.id)):
-                quad.dest[0] = "L_{}".format(int(quad.dest[0][quad.dest[0].rfind('_')+1:])+self.begin)
+            if quad.dest and quad.dest[1] == 'loc':
+                if quad.dest[0].startswith('B_{}'.format(self.id)):
+                    quad.dest[0] = "L_{}".format(int(quad.dest[0][quad.dest[0].rfind('_')+1:])+self.begin)
 
     def complete_quadruples(self):
         # 为每个单一后继的block的四元组末尾添加跳转
         if len(self.suc) == 1:
-            self.Quadruples.append(Quadruple('j', None, None, ["B_{}_0".format(self.suc[0]), 'loc']))
+            if len(self.Quadruples) == 0 or self.Quadruples[-1].dest[1] != 'loc':
+                self.Quadruples.append(Quadruple('j', None, None, ["B_{}_0".format(self.suc[0]), 'loc']))
 
         line = 0
         for quad in self.Quadruples:
             quad.line = line
             line += 1
-            if quad.dest and quad.dest[1] == 'loc' and quad.dest[0].startswith("B__"):
-                quad.dest[0] = "B_{}_".format(self.id) + quad.dest[0][3:]
+            if quad.dest and quad.dest[1] == 'loc':
+                if quad.dest[0].startswith("B__"):
+                    quad.dest[0] = "B_{}_".format(self.id) + quad.dest[0][3:]
+                elif quad.dest[0] == 'Break':
+                    quad.dest[0] = "B_{}_0".format(self.loop_end)
+                elif quad.dest[0] == 'Continue':
+                    quad.dest[0] = "B_{}_0".format(self.loop_cond)
 
         if len(self.branch) != 0:
             for quad in self.Quadruples:
@@ -136,6 +144,12 @@ class Block(object):
                 elif isinstance(node, c_ast.Decl):
                     dec(node, symtab, res, reg_pool)
 
+                elif isinstance(node, c_ast.Break):
+                    res.append(Quadruple('j', None, None, ['Break', 'loc']))
+
+                elif isinstance(node, c_ast.Continue):
+                    res.append(Quadruple('j', None, None, ['Continue', 'loc']))
+
 
 # 处理assignment
 def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: RegPool):
@@ -189,7 +203,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
 
 
 # 处理 a[x][y]
-def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
+def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
     # mode 1 写地址 arg是arg1   0 读地址 arg是dest
     # 确定维度
     # array[2][3] dims = [2,3]
@@ -226,11 +240,11 @@ def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: 
         cur = cur.name
 
     sym = get_sym_by_id(cur, symtab)
-    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, init_offset)
 
 
 # 处理 *(*(arr+1)+1)   *(p+1) 等*对数组的运算
-def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
+def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
     subscripts = []
     cur = node
     while isinstance(cur, c_ast.UnaryOp) or isinstance(cur, c_ast.BinaryOp):
@@ -243,10 +257,10 @@ def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore
             cur = cur.left
 
     sym = get_sym_by_id(cur, symtab)
-    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, init_offset)
 
 
-def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
+def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
     dest = [sym.name, sym]
     # 传递的是地址
     if len(subscripts) != len(sym.dims):
@@ -256,7 +270,7 @@ def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, re
 
     index = -1
     offset = reg_pool.get_reg('int')
-    res.append(Quadruple('=', ['0', MyConstant('0', 'int')], None, offset))
+    res.append(Quadruple('=', [init_offset, MyConstant(init_offset, 'int')], None, offset))
     for i in range(len(subscripts)):
         tmp = reg_pool.get_reg('int')
         subscripts[index][1].type = 'int'
