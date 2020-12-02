@@ -374,26 +374,6 @@ if __name__ == '__main__':
 
     sts = symtab_store(ast)
     sts.show(ast)
-    '''
-    无差异，可以运行
-    new = ast
-    t: SymTab = sts.get_symtab_of(new)
-    print(t)
-    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-    t: SymTab = sts.get_symtab_of(ast)
-    print(t)
-    '''
-    """
-    # python 的 = 对object对象不是深拷贝
-    node = ast.ext[1]
-    node.show()
-    print("--------------\n\n")
-    node = c_ast.IdentifierType(names=[])
-    node.show()
-    print("--------------\n\n")
-    ast.ext[2].show()
-    print("--------------\n\n")
-    """
 
     # map记录了ast当中所有节点的父节点：字典类型
     # map = {}

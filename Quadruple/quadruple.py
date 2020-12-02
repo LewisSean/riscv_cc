@@ -21,6 +21,7 @@ class Quadruple(object):
         # 行号
         self.line = -1
         # 四元组类型：0 / 1 / 2 / 3 / 4
+        # 未用到该属性
         # https://blog.csdn.net/xdz78/article/details/53454685
         self.type = 0
 
