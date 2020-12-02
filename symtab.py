@@ -180,6 +180,9 @@ class ArraySymbol(Symbol):
         self.ks = [1]
         for i in range(len(self.dims)-1, 0, -1):
             self.ks.append(self.ks[-1] * self.dims[i])
+        self.len = 1
+        for item in self.dims:
+            self.len *= item
 
     def __repr__(self):
         total = 1

@@ -178,7 +178,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
         if left.op == '*':
             # case: *p = 100
             if isinstance(left.expr, c_ast.ID):
-                sym = get_sym_by_id(left.expr, symtab)
+                sym = get_sym_by_node(left.expr, symtab)
                 dest = [left.expr.name, sym]
                 res.append(Quadruple('[]=', arg1, ['0', MyConstant('0', sym.target_type)], dest))
 
@@ -186,7 +186,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
             elif isinstance(left.expr, c_ast.BinaryOp):
                 _expr = left.expr
                 if isinstance(_expr.left, c_ast.ID):
-                    sym = get_sym_by_id(_expr.left, symtab)
+                    sym = get_sym_by_node(_expr.left, symtab)
                     dest = [_expr.left.name, sym]
                     arg2 = expr(_expr.right, symtab, res, reg_pool)
                     res.append(Quadruple('[]=', arg1, arg2, dest))
@@ -203,7 +203,7 @@ def assign(node: c_ast.Assignment, symtab: SymTabStore, res: list, reg_pool: Reg
 
 
 # 处理 a[x][y]
-def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
+def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool):
     # mode 1 写地址 arg是arg1   0 读地址 arg是dest
     # 确定维度
     # array[2][3] dims = [2,3]
@@ -234,17 +234,27 @@ def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: 
     '''
     subscripts = []
     cur = node
-    while  not isinstance(cur.name, str):
+    offset = 0
+    sym = None
+    sym_pre = None
+    while not isinstance(cur.name, str):
         tmp = expr(cur.subscript, symtab, res, reg_pool)
         subscripts.append(tmp)
+
+        if isinstance(cur.name, c_ast.StructRef):
+            # sym_pre是结构体的sym，sym_struct是结构体的全局定义sym
+            offset, sym_pre, arr_name, sym_struct = get_structRef(cur.name, mode, pass_arg, symtab, res, reg_pool, subscripts=True)
+            sym = sym_struct.member_symtab.get_symbol(arr_name)
+            break
         cur = cur.name
 
-    sym = get_sym_by_id(cur, symtab)
-    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, init_offset)
+    if sym == None:
+        sym = get_sym_by_node(cur, symtab)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, str(offset), base=sym_pre)
 
 
 # 处理 *(*(arr+1)+1)   *(p+1) 等*对数组的运算
-def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
+def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0', base=None):
     subscripts = []
     cur = node
     while isinstance(cur, c_ast.UnaryOp) or isinstance(cur, c_ast.BinaryOp):
@@ -256,12 +266,15 @@ def get_ArrayRef_by_star(node:c_ast.UnaryOp, mode, pass_arg, symtab: SymTabStore
             subscripts.append(tmp)
             cur = cur.left
 
-    sym = get_sym_by_id(cur, symtab)
+    sym = get_sym_by_node(cur, symtab)
     arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, init_offset)
 
 
-def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0'):
-    dest = [sym.name, sym]
+def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, reg_pool: RegPool, init_offset='0', base=None):
+    if base == None:
+        dest = [sym.name, sym]
+    else:
+        dest = [base.name, base]
     # 传递的是地址
     if len(subscripts) != len(sym.dims):
         is_addr = True
@@ -270,7 +283,7 @@ def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, re
 
     index = -1
     offset = reg_pool.get_reg('int')
-    res.append(Quadruple('=', [init_offset, MyConstant(init_offset, 'int')], None, offset))
+    res.append(Quadruple('=', ['0', MyConstant('0', 'int')], None, offset))
     for i in range(len(subscripts)):
         tmp = reg_pool.get_reg('int')
         subscripts[index][1].type = 'int'
@@ -282,6 +295,8 @@ def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, re
 
     _size = str(sym.element_size)
     res.append(Quadruple('*', offset, [_size, MyConstant(_size, 'int')], offset))
+    if init_offset != '0':
+        res.append(Quadruple('+=', [init_offset, MyConstant(init_offset, 'int')], None, offset))
 
     for item in subscripts:
         if isinstance(item[1], TmpValue):
@@ -302,13 +317,19 @@ def arrayRef(subscripts, sym, mode, pass_arg, symtab: SymTabStore, res: list, re
     reg_pool.release_reg(offset[0])
 
 
-def get_sym_by_id(node, symtab):
+def get_sym_by_node(node, symtab):
     t: SymTab = symtab.get_symtab_of(node)
     while not isinstance(node.name, str):
         node = node.name
     if isinstance(node, c_ast.Struct) and not node.name.startswith('struct'):
         node.name = 'struct ' + node.name
     sym = t.get_symbol(node.name)
+    return sym
+
+
+def get_sym_by_name(node, name: str, symtab):
+    t: SymTab = symtab.get_symtab_of(node)
+    sym = t.get_symbol(name)
     return sym
 
 
@@ -327,7 +348,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     # 处理左值
     # 可能的类型：PtrDecl/TypeDecl/ArrayDecl
     left = node.type
-    sym = get_sym_by_id(node, symtab)
+    sym = get_sym_by_node(node, symtab)
     dest = [sym.name, sym]
 
     # 得到四元组
@@ -343,13 +364,26 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
                 res.append(Quadruple('[]=', arg, [str(i*interval), MyConstant(str(i*interval), "int")], dest))
 
         if isinstance(left.type, c_ast.Struct):
-            sym = get_sym_by_id(left.type, symtab)
+            # struct中含有数组时，如果数组是struct最后一个元素，则可以不用预定义长度，由编译器计算
+            # 否则必须有长度，我们默认定义的数组都有
+            sym = get_sym_by_node(left.type, symtab)
             pre = []
             sequence_struct(sym, [0], node, sym.element_paths, symtab, pre)
-            for i, arg in enumerate(arg1):
-                res.append(Quadruple('[]=', arg,
-                                     [str(sym.element_paths[i][0]), MyConstant(str(sym.element_paths[i][0]), "int")],
+            i = 0
+            for index in range(len(sym.element_paths)):
+                if len(sym.element_paths[index]) == 3:
+                    res.append(Quadruple('[]=', arg1[i],
+                                     [str(sym.element_paths[index][0]), MyConstant(str(sym.element_paths[index][0]), "int")],
                                      dest))
+                    i += 1
+                else:
+                    # 该元素是数组
+                    for ii in range(sym.element_paths[index][3]):
+                        addr = str(sym.element_paths[index][0] + ii * sym.element_paths[index][4])
+                        res.append(Quadruple('[]=', arg1[i+ii],
+                                             [str(addr),
+                                              MyConstant(str(addr), "int")], dest))
+                    i += sym.element_paths[index][3]
 
     # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
@@ -360,20 +394,15 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
         reg_pool.release_reg(arg1[0])
 
 
-def get_sym_by_name(node, name: str, symtab):
-    t: SymTab = symtab.get_symtab_of(node)
-    sym = t.get_symbol(name)
-    return sym
-
-
-def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool):
+def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, subscripts=None):
     # mode 1 写地址
     path = []
-    while not isinstance(node.name, str):
-        path.append(node.field.name)
-        node = node.name
-    sym = get_sym_by_id(node, symtab)
-    sym_struct = get_sym_by_name(node, sym.type, symtab)
+    cur = node
+    while not isinstance(cur.name, str):
+        path.append(cur.field.name)
+        cur = cur.name
+    sym = get_sym_by_node(cur, symtab)
+    sym_struct = get_sym_by_name(cur, sym.type, symtab)
     path = path[::-1]
     target_item = None
     for item in sym_struct.element_paths:
@@ -381,6 +410,8 @@ def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool):
             target_item = item
             break
     offset = str(target_item[0])
+    if subscripts:
+        return offset, sym, path[-1], sym_struct
     if mode == 1:
         res.append(Quadruple('[]=', pass_arg, [offset, MyConstant(offset, 'int')], [sym.name, sym]))
 
@@ -393,10 +424,18 @@ def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool):
 def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab, pre):
     for k in sym.member_symtab.keys():
         if not sym.member_symtab[k].type.startswith('struct'):
-            pre.append(k)
-            res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre)))
-            pre.pop()
-            offset.append(offset[-1]+sym.member_symtab[k].size)
+            if sym.member_symtab[k].type != 'array':
+                pre.append(k)
+                res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre)))
+                pre.pop()
+                offset.append(offset[-1]+sym.member_symtab[k].size)
+            else:
+                if not sym.member_symtab[k].element_type.startswith('struct'):
+                    pre.append(k)
+                    res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre), sym.member_symtab[k].len,
+                                sym.member_symtab[k].element_size))
+                    pre.pop()
+                    offset.append(offset[-1] + sym.member_symtab[k].size)
         else:
             t: SymTab = symtab.get_symtab_of(node)
             new_sym = t.get_symbol(sym.member_symtab[k].type)
@@ -414,7 +453,6 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
     elif isinstance(node, (c_ast.ID,)):
         t: SymTab = symtab.get_symtab_of(node)
         sym = t.get_symbol(node.name)
-        print(sym)
         return node.name, sym
 
     elif isinstance(node, (c_ast.UnaryOp, )):
@@ -437,7 +475,7 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
         elif node.op == '*':
             # case: tmp = *p
             if isinstance(node.expr, c_ast.ID):
-                sym = get_sym_by_id(node.expr, symtab)
+                sym = get_sym_by_node(node.expr, symtab)
                 arg1 = [node.expr.name, sym]
 
                 if sym.type == 'pointer':
