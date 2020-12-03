@@ -399,8 +399,8 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
                     res.append(Quadruple('=', [str(offset), MyConstant(str(offset), 'int')], None, addr))
                     res.append(Quadruple('[]=', arg1[i], addr, dest))
 
-                    res.append(Quadruple('+=', [str(sym.element_paths[index][3]),
-                                                [str(sym.element_paths[index][3]), 'int']], None, addr))
+                    # res.append(Quadruple('+=', [str(sym.element_paths[index][3]),
+                    #                            [str(sym.element_paths[index][3]), 'int']], None, addr))
                     offset += sym.element_paths[index][3]
                     reg_pool.release_reg(addr[0])
                     i += 1
