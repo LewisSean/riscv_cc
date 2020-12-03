@@ -1,7 +1,7 @@
 from pycparser import c_ast
 from pycparser import CParser
 from copy import deepcopy
-from symtab import symtab_store, SymTab, SymTabStore, StructSymbol
+from symtab import symtab_store, SymTab, SymTabStore, StructSymbol, Symbol, ArraySymbol, BasicSymbol
 from Quadruple.quadruple import Quadruple, TmpValue, MyConstant
 import re
 
@@ -331,8 +331,90 @@ def get_sym_by_name(node, name: str, symtab):
     sym = t.get_symbol(name)
     return sym
 
+# 前闭后开
+def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=None, tmp_base=None, struct_arr=False, arr_struct=False, struct_sym=None, array_element=None, start_index=0,end_index=None, name=None):
+    if offset is None:
+        offset = 0
+    if end_index is None:
+        end_index = len(arg1)
 
-# 处理dec
+    if not isinstance(node.init, c_ast.InitList):
+        res.append(Quadruple('=', arg1, None, dest))
+        return
+
+    # 连续赋值，对于struct和array
+    elif isinstance(node.init, c_ast.InitList):
+        if tmp_base[1].type == 'array':
+            # 数组元素不是结构体
+            if not tmp_base[1].element_type.startswith("struct"):
+                interval = tmp_base[1].element_size
+                if offset == 0:
+                    for i, arg in enumerate(arg1[start_index:end_index]):
+                        res.append(
+                            Quadruple('[]=', arg, [str(i * interval), MyConstant(str(i * interval), "int")], dest))
+                        offset += interval
+                else:
+                    my_interval = [str(interval), MyConstant(str(interval), "int")]
+                    addr = reg_pool.get_reg('int')
+                    res.append(Quadruple('=', [str(offset), MyConstant(str(offset), 'int')], None, addr))
+                    for arg in arg1[start_index:end_index]:
+                        res.append(Quadruple('[]=', arg, addr, dest))
+                        res.append(Quadruple('+=', my_interval, None, addr))
+                        offset += interval
+                    reg_pool.release_reg(addr[0])
+                return offset
+            # 数组元素是结构体
+            else:
+                if not struct_sym:
+                    struct_sym: StructSymbol = get_sym_by_name(node, dest[1].element_type, symtab)
+                    if len(struct_sym.element_paths) == 0:
+                        pre = []
+                        sequence_struct(struct_sym, [0], node, struct_sym.element_paths, symtab, pre)
+                        get_struct_atoms(struct_sym, symtab.get_symtab_of(node))
+
+                for i in range(tmp_base[1].len):
+                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset=offset, tmp_base=[struct_sym.name, struct_sym], arr_struct=True,
+                                           struct_sym=struct_sym, start_index=start_index, end_index=start_index+struct_sym.atoms+1)
+                    start_index += struct_sym.atoms
+                return offset
+
+        # 结构体
+        elif isinstance(node.type.type, c_ast.Struct) or arr_struct:
+            # struct中含有数组时，如果数组是struct最后一个元素，则可以不用预定义长度，由编译器计算
+            # 否则必须有长度，我们默认定义的数组都有长度
+            if not arr_struct:
+                sym = get_sym_by_node(node.type.type, symtab)
+            else:
+                sym = struct_sym
+            if len(sym.element_paths) == 0:
+                pre = []
+                sequence_struct(sym, [0], node, sym.element_paths, symtab, pre)
+                get_struct_atoms(sym, symtab.get_symtab_of(node))
+
+            i = start_index
+            for index in range(len(sym.element_paths)):
+                # struct当前的元素不是数组
+                if len(sym.element_paths[index]) == 4:
+                    addr = reg_pool.get_reg('int')
+                    res.append(Quadruple('=', [str(offset), MyConstant(str(offset), 'int')], None, addr))
+                    res.append(Quadruple('[]=', arg1[i], addr, dest))
+
+                    res.append(Quadruple('+=', [str(sym.element_paths[index][3]),
+                                                [str(sym.element_paths[index][3]), 'int']], None, addr))
+                    offset += sym.element_paths[index][3]
+                    reg_pool.release_reg(addr[0])
+                    i += 1
+                # struct当前元素是数组
+
+                else:
+                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset, struct_arr=True, tmp_base=sym.element_paths[index][1],
+                                           start_index=i, end_index=i+sym.element_paths[index][3]+1)
+                    i += sym.element_paths[index][3]
+
+            return offset
+
+
+# 需要重构！！！！！
 def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
 
     # 先处理右值
@@ -350,27 +432,56 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     sym = get_sym_by_node(node, symtab)
     dest = [sym.name, sym]
 
-    # 得到四元组
-    # 直接赋值
+    '''
     if not isinstance(node.init, c_ast.InitList):
         res.append(Quadruple('=', arg1, None, dest))
 
     # 连续赋值，对于struct和array
     elif isinstance(node.init, c_ast.InitList):
         if isinstance(left, c_ast.ArrayDecl):
-            interval = dest[1].element_size
-            for i, arg in enumerate(arg1):
-                res.append(Quadruple('[]=', arg, [str(i*interval), MyConstant(str(i*interval), "int")], dest))
+            if not dest[1].element_type.startswith("struct"):
+                interval = dest[1].element_size
+                for i, arg in enumerate(arg1):
+                    res.append(Quadruple('[]=', arg, [str(i*interval), MyConstant(str(i*interval), "int")], dest))
+            # 数组的元素是结构体
+            else:
+                struct_sym: StructSymbol = get_sym_by_name(node, dest[1].element_type, symtab)
+                if len(struct_sym.element_paths) == 0:
+                    pre = []
+                    sequence_struct(struct_sym, [0], node, struct_sym.element_paths, symtab, pre)
+                    get_struct_atoms(struct_sym, symtab.get_symtab_of(node))
+                offset_reg = reg_pool.get_reg('int')
+                res.append(Quadruple('=', ['0', MyConstant('0','int')], None, offset_reg))
+                interval = dest[1].element_size
+                i = 0
+                for _ in range(dest[1].len):
+                    for index in range(len(struct_sym.element_paths)):
+                            if len(struct_sym.element_paths[index]) == 4:
+                                res.append(Quadruple('[]=', arg1[i], offset_reg, dest))
+                                res.append(Quadruple('+=', [str(struct_sym.element_paths[index][3]),
+                                                  MyConstant(str(struct_sym.element_paths[index][3]), "int")], None, offset_reg))
+                                i += 1
+                            else:
+                                # 该元素是数组
+                                for ii in range(struct_sym.element_paths[index][3]):
+                                    dis = struct_sym.element_paths[index][4]
+                                    res.append(Quadruple('[]=', arg1[i + ii], offset_reg, dest))
+                                    res.append(Quadruple('+=', [str(dis), MyConstant(str(dis), "int")], None, offset_reg))
+                                i += struct_sym.element_paths[index][3]
+                reg_pool.release_reg(offset_reg[0])
 
         if isinstance(left.type, c_ast.Struct):
             # struct中含有数组时，如果数组是struct最后一个元素，则可以不用预定义长度，由编译器计算
-            # 否则必须有长度，我们默认定义的数组都有
+            # 否则必须有长度，我们默认定义的数组都有长度
             sym = get_sym_by_node(left.type, symtab)
-            pre = []
-            sequence_struct(sym, [0], node, sym.element_paths, symtab, pre)
+            if len(sym.element_paths) == 0:
+                pre = []
+                sequence_struct(sym, [0], node, sym.element_paths, symtab, pre)
+                get_struct_atoms(sym, symtab.get_symtab_of(node))
+            get_struct_atoms(sym, symtab.get_symtab_of(node))
             i = 0
             for index in range(len(sym.element_paths)):
-                if len(sym.element_paths[index]) == 3:
+                if len(sym.element_paths[index]) == 4:
                     res.append(Quadruple('[]=', arg1[i],
                                      [str(sym.element_paths[index][0]), MyConstant(str(sym.element_paths[index][0]), "int")],
                                      dest))
@@ -383,6 +494,9 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
                                              [str(addr),
                                               MyConstant(str(addr), "int")], dest))
                     i += sym.element_paths[index][3]
+
+    '''
+    variable_init(node, dest, arg1, res, symtab, reg_pool, tmp_base=dest)
 
     # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
@@ -409,7 +523,7 @@ def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, 
             target_item = item
             break
     offset = str(target_item[0])
-    if subscripts:
+    if is_array:
         return offset, sym, target_item[1][1]
     if mode == 1:
         res.append(Quadruple('[]=', pass_arg, [offset, MyConstant(offset, 'int')], [sym.name, sym]))
@@ -423,25 +537,55 @@ def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, 
 def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab, pre):
     for k in sym.member_symtab.keys():
         if not sym.member_symtab[k].type.startswith('struct'):
+            # 正常元素
             if sym.member_symtab[k].type != 'array':
                 pre.append(k)
-                res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre)))
+                res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre), sym.member_symtab[k].size))
                 pre.pop()
                 offset.append(offset[-1]+sym.member_symtab[k].size)
             else:
+                # 结构体中的属性数组，元素不是结构体
                 if not sym.member_symtab[k].element_type.startswith('struct'):
                     pre.append(k)
                     res.append((offset[-1], [k, sym.member_symtab[k]], deepcopy(pre), sym.member_symtab[k].len,
                                 sym.member_symtab[k].element_size))
                     pre.pop()
                     offset.append(offset[-1] + sym.member_symtab[k].size)
+                # 结构体中的属性数组，元素是结构体
+                else:
+                    t: SymTab = symtab.get_symtab_of(node)
+                    new_sym = t.get_symbol(sym.member_symtab[k].element_type)
+                    pre.append(k)
+                    res.append((offset[-1], [k, new_sym], deepcopy(pre), sym.member_symtab[k].len,
+                                sym.member_symtab[k].element_size))
+                    pre.pop()
+                    offset.append(offset[-1] + sym.member_symtab[k].size)
         else:
-
             t: SymTab = symtab.get_symtab_of(node)
             new_sym = t.get_symbol(sym.member_symtab[k].type)
             pre.append(k)
             sequence_struct(new_sym, offset, node, res, symtab, pre)
             pre.pop()
+
+
+def get_struct_atoms(struct_sym: StructSymbol, symtab: SymTab):
+    if struct_sym.atoms != 0:
+        return struct_sym.atoms
+    for k in struct_sym.member_symtab.keys():
+        if struct_sym.member_symtab[k].type != 'array' and not struct_sym.member_symtab[k].type.startswith('struct'):
+            struct_sym.atoms += 1
+        elif struct_sym.member_symtab[k].type == 'array':
+            if struct_sym.member_symtab[k].element_type in BasicSymbol.SIZE_OF:
+                struct_sym.atoms += BasicSymbol.SIZE_OF[struct_sym.member_symtab[k].element_type] * struct_sym.member_symtab[k].len
+            else:
+                new_sym: StructSymbol = symtab.get_symbol(struct_sym.member_symtab[k].element_type)
+                num = get_struct_atoms(new_sym, symtab)
+                struct_sym.atoms += num * struct_sym.member_symtab[k].len
+        else:
+            new_sym: StructSymbol = symtab.get_symbol(struct_sym.member_symtab[k].type)
+            num = get_struct_atoms(new_sym, symtab)
+            struct_sym.atoms += num
+    return struct_sym.atoms
 
 
 # 处理右值表达式！！！！

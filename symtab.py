@@ -108,6 +108,7 @@ class StructSymbol(Symbol):
         super().__init__(name, offset_type=OFFSET.LOCAL, type_str='struct', **kwarg)
         self.member_symtab = SymTab(None)
         self.element_paths = []
+        self.atoms = 0
 
     def get_member_symbol(self, name:str) -> Symbol:
         return self.member_symtab.get_symbol(name)
@@ -176,13 +177,18 @@ class ArraySymbol(Symbol):
         super().__init__(name, type_str = 'array', **kwarg)
         self.element_type = element_type
         self.dims = dims
-        self.element_size = BasicSymbol.SIZE_OF[element_type]
+
         self.ks = [1]
         for i in range(len(self.dims)-1, 0, -1):
             self.ks.append(self.ks[-1] * self.dims[i])
         self.len = 1
         for item in self.dims:
             self.len *= item
+
+        if element_type in BasicSymbol.SIZE_OF.keys():
+            self.element_size = BasicSymbol.SIZE_OF[element_type]
+        else:
+            self.element_size = int(self.size / self.len)
 
     def __repr__(self):
         total = 1
