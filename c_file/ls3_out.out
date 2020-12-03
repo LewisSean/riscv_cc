@@ -236,7 +236,7 @@ FileAST(ext=[Decl(name=None,
                                                                                                    )
                                                                                           ),
                                                                            subscript=Constant(type='int',
-                                                                                              value='0'
+                                                                                              value='2'
                                                                                               )
                                                                            ),
                                                            rvalue=Constant(type='int',

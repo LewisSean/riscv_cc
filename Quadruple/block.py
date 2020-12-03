@@ -236,21 +236,20 @@ def get_ArrayRef(node:c_ast.ArrayRef, mode, pass_arg, symtab: SymTabStore, res: 
     cur = node
     offset = 0
     sym = None
-    sym_pre = None
+    sym_struct = None
     while not isinstance(cur.name, str):
         tmp = expr(cur.subscript, symtab, res, reg_pool)
         subscripts.append(tmp)
 
         if isinstance(cur.name, c_ast.StructRef):
             # sym_pre是结构体的sym，sym_struct是结构体的全局定义sym
-            offset, sym_pre, arr_name, sym_struct = get_structRef(cur.name, mode, pass_arg, symtab, res, reg_pool, subscripts=True)
-            sym = sym_struct.member_symtab.get_symbol(arr_name)
+            offset, sym_struct, sym = get_structRef(cur.name, mode, pass_arg, symtab, res, reg_pool, is_array=True)
             break
         cur = cur.name
 
     if sym == None:
         sym = get_sym_by_node(cur, symtab)
-    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, str(offset), base=sym_pre)
+    arrayRef(subscripts, sym, mode, pass_arg, symtab, res, reg_pool, str(offset), base=sym_struct)
 
 
 # 处理 *(*(arr+1)+1)   *(p+1) 等*对数组的运算
@@ -394,7 +393,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
         reg_pool.release_reg(arg1[0])
 
 
-def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, subscripts=None):
+def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, is_array=None):
     # mode 1 写地址
     path = []
     cur = node
@@ -411,7 +410,7 @@ def get_structRef(node: c_ast.StructRef, mode, pass_arg, symtab, res, reg_pool, 
             break
     offset = str(target_item[0])
     if subscripts:
-        return offset, sym, path[-1], sym_struct
+        return offset, sym, target_item[1][1]
     if mode == 1:
         res.append(Quadruple('[]=', pass_arg, [offset, MyConstant(offset, 'int')], [sym.name, sym]))
 
@@ -437,6 +436,7 @@ def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab, pre):
                     pre.pop()
                     offset.append(offset[-1] + sym.member_symtab[k].size)
         else:
+
             t: SymTab = symtab.get_symtab_of(node)
             new_sym = t.get_symbol(sym.member_symtab[k].type)
             pre.append(k)
