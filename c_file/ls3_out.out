@@ -109,6 +109,40 @@ FileAST(ext=[Decl(name=None,
                                                          ),
                                           init=None,
                                           bitsize=None
+                                          ),
+                                     Decl(name='k',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='k',
+                                                        quals=[
+                                                              ],
+                                                        type=IdentifierType(names=['char'
+                                                                                  ]
+                                                                            )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
+                                          ),
+                                     Decl(name='kk',
+                                          quals=[
+                                                ],
+                                          storage=[
+                                                  ],
+                                          funcspec=[
+                                                   ],
+                                          type=TypeDecl(declname='kk',
+                                                        quals=[
+                                                              ],
+                                                        type=IdentifierType(names=['int'
+                                                                                  ]
+                                                                            )
+                                                        ),
+                                          init=None,
+                                          bitsize=None
                                           )
                                     ]
                               ),
@@ -265,6 +299,12 @@ FileAST(ext=[Decl(name=None,
                                                                                    ),
                                                                           Constant(type='int',
                                                                                    value='5'
+                                                                                   ),
+                                                                          Constant(type='int',
+                                                                                   value='100'
+                                                                                   ),
+                                                                          Constant(type='int',
+                                                                                   value='1000'
                                                                                    )
                                                                          ]
                                                                    ),

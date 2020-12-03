@@ -374,7 +374,7 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
 
                 for i in range(tmp_base[1].len):
                     offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset=offset, tmp_base=[struct_sym.name, struct_sym], arr_struct=True,
-                                           struct_sym=struct_sym, start_index=start_index, end_index=start_index+struct_sym.atoms+1)
+                                           struct_sym=struct_sym, start_index=start_index, end_index=start_index+struct_sym.atoms)
                     start_index += struct_sym.atoms
                 return offset
 
@@ -408,7 +408,7 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
 
                 else:
                     offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset, struct_arr=True, tmp_base=sym.element_paths[index][1],
-                                           start_index=i, end_index=i+sym.element_paths[index][3]+1)
+                                           start_index=i, end_index=i+sym.element_paths[index][3])
                     i += sym.element_paths[index][3]
 
             return offset
