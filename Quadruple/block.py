@@ -332,7 +332,7 @@ def get_sym_by_name(node, name: str, symtab):
     return sym
 
 # 前闭后开
-def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=None, tmp_base=None, struct_arr=False, arr_struct=False, struct_sym=None, array_element=None, start_index=0,end_index=None, name=None):
+def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=None, arr_sym=None, struct_arr=False, arr_struct=False, struct_sym=None, start_index=0, end_index=None):
     if offset is None:
         offset = 0
     if end_index is None:
@@ -344,10 +344,10 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
 
     # 连续赋值，对于struct和array
     elif isinstance(node.init, c_ast.InitList):
-        if tmp_base[1].type == 'array':
+        if arr_sym[1].type == 'array':
             # 数组元素不是结构体
-            if not tmp_base[1].element_type.startswith("struct"):
-                interval = tmp_base[1].element_size
+            if not arr_sym[1].element_type.startswith("struct"):
+                interval = arr_sym[1].element_size
                 if offset == 0:
                     for i, arg in enumerate(arg1[start_index:end_index]):
                         res.append(
@@ -372,8 +372,8 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
                         sequence_struct(struct_sym, [0], node, struct_sym.element_paths, symtab, pre)
                         get_struct_atoms(struct_sym, symtab.get_symtab_of(node))
 
-                for i in range(tmp_base[1].len):
-                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset=offset, tmp_base=[struct_sym.name, struct_sym], arr_struct=True,
+                for i in range(arr_sym[1].len):
+                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset=offset, arr_sym=[struct_sym.name, struct_sym], arr_struct=True,
                                            struct_sym=struct_sym, start_index=start_index, end_index=start_index+struct_sym.atoms)
                     start_index += struct_sym.atoms
                 return offset
@@ -407,7 +407,7 @@ def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=No
                 # struct当前元素是数组
 
                 else:
-                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset, struct_arr=True, tmp_base=sym.element_paths[index][1],
+                    offset = variable_init(node, dest, arg1, res, symtab, reg_pool, offset, struct_arr=True, arr_sym=sym.element_paths[index][1],
                                            start_index=i, end_index=i+sym.element_paths[index][3])
                     i += sym.element_paths[index][3]
 
@@ -496,7 +496,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
                     i += sym.element_paths[index][3]
 
     '''
-    variable_init(node, dest, arg1, res, symtab, reg_pool, tmp_base=dest)
+    variable_init(node, dest, arg1, res, symtab, reg_pool, arr_sym=dest)
 
     # 函数结束，释放可能的右值中间变量
     if isinstance(node.init, c_ast.InitList):
@@ -568,6 +568,7 @@ def sequence_struct(sym: StructSymbol, offset, node, res: list, symtab, pre):
             pre.pop()
 
 
+# 返回一个struct结构的原子变量（非数组和struct）的个数
 def get_struct_atoms(struct_sym: StructSymbol, symtab: SymTab):
     if struct_sym.atoms != 0:
         return struct_sym.atoms
@@ -576,7 +577,7 @@ def get_struct_atoms(struct_sym: StructSymbol, symtab: SymTab):
             struct_sym.atoms += 1
         elif struct_sym.member_symtab[k].type == 'array':
             if struct_sym.member_symtab[k].element_type in BasicSymbol.SIZE_OF:
-                struct_sym.atoms += BasicSymbol.SIZE_OF[struct_sym.member_symtab[k].element_type] * struct_sym.member_symtab[k].len
+                struct_sym.atoms += struct_sym.member_symtab[k].len
             else:
                 new_sym: StructSymbol = symtab.get_symbol(struct_sym.member_symtab[k].element_type)
                 num = get_struct_atoms(new_sym, symtab)
@@ -585,6 +586,7 @@ def get_struct_atoms(struct_sym: StructSymbol, symtab: SymTab):
             new_sym: StructSymbol = symtab.get_symbol(struct_sym.member_symtab[k].type)
             num = get_struct_atoms(new_sym, symtab)
             struct_sym.atoms += num
+    print(struct_sym.name + "--------" + str(struct_sym.atoms))
     return struct_sym.atoms
 
 
