@@ -98,6 +98,9 @@ class SymTab(dict):
 
         return ans
 
+    def __iter__(self):
+        return iter(self.values())
+
 class StructSymbol(Symbol):
     '''
     结构体符号,特别之处是它自身持有一张符号表,记录成员变量信息.
@@ -130,11 +133,13 @@ class FuncSymbol(Symbol):
     size: 返回值的size
     params_symtab: 参数符号表
     frame_size: (返回值+参数列表+所有局部变量)的总大小,以byte计
+    local_symbols: list, 存储了所有局部变量的symbol
     '''
     def __init__(self, name):
         super().__init__(name)
         self.params_symtab = SymTab(None)
         self.frame_size = None
+        self.local_symbols = []
 
     def add_param_symbol(self, sym:Symbol):
         self.params_symtab.add_symbol(sym)
@@ -145,6 +150,10 @@ class FuncSymbol(Symbol):
         for name in self.params_symtab.keys():
             params += name+','
         ans+=',params=['+params[:-1]+'],frame_sz='+str(self.frame_size)
+        locals=''
+        for sym in self.local_symbols:
+            locals += sym.name+','
+        ans+=',locals=['+locals[:-1]+']'
         return ans
 
 class PointerSymbol(Symbol):
@@ -489,6 +498,18 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
         dfs(u.body)
 
+        local_symbols = []
+        def local_dfs(u:c_ast.Node):
+            t = sts.get_symtab_of(u)
+            if t is None:
+                return 
+            for sym in t:
+                local_symbols.append(sym)
+            for v_name, v in u.children():
+                local_dfs(v)
+        local_dfs(u.body)
+        x.local_symbols = local_symbols
+
         x.frame_size = offset
         
         offset = saved_offset
@@ -635,7 +656,7 @@ def gen_ast(file:str) -> c_ast.Node:
     return ast
 
 if __name__=='__main__':
-    file = './c_file/zc3.c'
+    file = './c_file/zc2.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
