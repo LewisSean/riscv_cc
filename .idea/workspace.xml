@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="GROUP_NODE:origin" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="5f058f8d-b361-4242-83b9-747e63e12bcc" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/c_file/Assembly/Assembly.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Quadruple/block_graph.py" beforeDir="false" afterPath="$PROJECT_DIR$/Quadruple/block_graph.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/c_file/ls2.c" beforeDir="false" afterPath="$PROJECT_DIR$/c_file/ls2.c" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="JupyterTrust" id="53109e23-33d3-4daf-bf22-af9d0be087f4" />
+  <component name="ProjectId" id="1l0YSb4kyvqPGAujaqiIwxeKWBZ" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/c_file" />
+  </component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\40505\Desktop\riscv_cc\c_file" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.Assembly">
+    <configuration name="Assembly" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="riscv_cc" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Assembly" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Assembly/Assembly.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="block_graph" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="riscv_cc" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Quadruple" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Quadruple/block_graph.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="symtab" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="riscv_cc" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/symtab.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.Assembly" />
+        <item itemvalue="Python.symtab" />
+        <item itemvalue="Python.block_graph" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="5f058f8d-b361-4242-83b9-747e63e12bcc" name="Default Changelist" comment="" />
+      <created>1606735476640</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1606735476640</updated>
+      <workItem from="1606735477850" duration="6914000" />
+      <workItem from="1606912583207" duration="3454000" />
+      <workItem from="1607096833114" duration="639000" />
+      <workItem from="1607272466114" duration="490000" />
+      <workItem from="1607691162162" duration="3822000" />
+      <workItem from="1607762605032" duration="12556000" />
+      <workItem from="1607834053941" duration="17776000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state width="396" height="466" key="DebuggerActiveHint" timestamp="1607769012432">
+      <screen x="-1080" y="0" width="1080" height="1880" />
+    </state>
+    <state width="396" height="466" key="DebuggerActiveHint/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607769012432" />
+    <state width="1039" height="645" key="GridCell.Tab.0.bottom" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.0.bottom/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.0.bottom/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.0.center" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.0.center/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.0.center/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.0.left" timestamp="1607878885526">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.0.left/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.0.left/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885526" />
+    <state width="1039" height="645" key="GridCell.Tab.0.right" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.0.right/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.0.right/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.1.bottom" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.1.bottom/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808156" />
+    <state width="1039" height="645" key="GridCell.Tab.1.bottom/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.1.center" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.1.center/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.1.center/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.1.left" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.1.left/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808155" />
+    <state width="1039" height="645" key="GridCell.Tab.1.left/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state width="1039" height="645" key="GridCell.Tab.1.right" timestamp="1607878885527">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state width="1039" height="645" key="GridCell.Tab.1.right/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1607867808156" />
+    <state width="1039" height="645" key="GridCell.Tab.1.right/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607878885527" />
+    <state x="-843" y="680" width="606" height="578" key="find.popup" timestamp="1606915340885">
+      <screen x="-1080" y="0" width="1080" height="1880" />
+    </state>
+    <state x="-843" y="680" width="606" height="578" key="find.popup/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1606915340885" />
+    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup" timestamp="1607867222004">
+      <screen x="0" y="0" width="1536" height="824" />
+    </state>
+    <state x="-777" y="331" width="672" height="1547" key="search.everywhere.popup/0.0.1536.824/-1080.0.1080.1880@-1080.0.1080.1880" timestamp="1606913844865" />
+    <state x="431" y="145" width="672" height="678" key="search.everywhere.popup/0.0.1536.824/-1080.0.1080.1880@0.0.1536.824" timestamp="1607867222004" />
+  </component>
+  <component name="XDebuggerManager">
+    <watches-manager>
+      <configuration name="PythonConfigurationType">
+        <watch expression="t.'gogo' (1897582119792)" />
+        <watch expression="t.'main' (1897582119920)" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/riscv_cc$Assembly.coverage" NAME="Assembly Coverage Results" MODIFIED="1607867808143" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Assembly" />
+    <SUITE FILE_PATH="coverage/riscv_cc$symtab.coverage" NAME="symtab Coverage Results" MODIFIED="1607867481542" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/riscv_cc$block_graph.coverage" NAME="block_graph Coverage Results" MODIFIED="1607768640182" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Quadruple" />
+  </component>
+</project>
