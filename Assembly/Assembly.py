@@ -1,6 +1,7 @@
 from pycparser import c_ast
 from pycparser import CParser
 import symtab
+
 class Assembly:
     def __init__(self,op=None,arg1=None,arg2=None,arg3=None):
         self.op=op
@@ -49,8 +50,59 @@ class FunctionStack():
         self.size=size
         self.funstack={}
 
-    def CalSize(self,s:symtab.FuncSymbol):
-        varList=s.local_symbols
+def CalSize(s:symtab.FuncSymbol)->FunctionStack:
+    varList=s.local_symbols
+    f=FunctionStack()
+    loc=-16
+    funstack={}
+    csremain=0#处理char和short部分
+    for var in varList:
+        #变量部分
+        if(isinstance(var,symtab.BasicSymbol)):
+            #4字节 int,long int,long,signed,unsigned
+            if(var.type=='int' or var.type=='long int'
+                or var.type=='long' or var.type=='signed'
+                    or var.type == 'unsigned'):
+                csremain = 0
+                loc-=4
+                funstack[var.name]=[loc]
+            #8字节 long long,long long int
+            elif(var.type=='long long'
+                 or var.type=='long long int'):
+                csremain=0
+                loc -= 8
+                #低位数据存在地位上
+                funstack[var.name] = [loc,loc+4]
+            #2字节 short int,short
+            elif (var.type == 'short int'
+                    or var.type == 'short'):
+                if csremain==0 or csremain==1:
+                    csremain=4
+                    loc-=4
+                    csremain-=2
+                    funstack[var.name] = [loc+csremain]
+                # elif csremain==2:
+                #     csremain -= 2
+                #     funstack[var.name] = [loc]
+                else:
+                    csremain=0
+                    funstack[var.name] = [loc]
+            #1字节 char
+            elif var.type == 'char':
+                if csremain == 0:
+                    csremain = 4
+                    loc -= 4
+                csremain -= 1
+                funstack[var.name] = [loc + csremain]
+        elif(isinstance(var, symtab.ArraySymbol)):
+            print('arr')
+        elif(isinstance(var, symtab.StructSymbol)):
+            print('struct')
+
+
+    f.funstack=funstack
+    f.size=-loc
+    return f
 
 
 
@@ -65,13 +117,15 @@ def FunctionAss(s:FunctionStack):
     return assList
 
 if __name__=='__main__':
-    file = '../c_file/wyb1.c'
+    file = '../c_file/zc2.c'
     parser = CParser()
     with open(file,'r') as f:
         ast = parser.parse(f.read(), file)
     sts = symtab.symtab_store(ast)
     sts.show(ast)
     t=sts.get_symtab_of(ast)
-    tt=t['main'].local_symbols
-    for i in tt:
+    tt=t['main']
+
+    f=CalSize(tt)
+    for i in f.funstack.items():
         print(i)
