@@ -12,6 +12,9 @@ class Symbol():
         self.offset = offset # 以byte计
         self.offset_type = offset_type # 取值为OFFSET中的常量
         self.type = type_str
+        self.Reg=None
+        self.isChange=False
+        self.inMem=False
 
     def __repr__(self):
         return '\033[1;33m%s\033[0m,sz=%d,off=%d(%s),type=%s'%(

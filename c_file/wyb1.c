@@ -1,9 +1,8 @@
-
-int main(){
-	long long a = 1;
+int main() {
+	long long a = 2147483648;
 	long long int b = 2;
 	long c = 3;
-	char l=11;
+	char l = 11;
 	long int d = 4;
 	signed e = 5;
 	unsigned f = 6;
@@ -17,7 +16,6 @@ int main(){
 	char j = 10;
 	short jj = 1010;
 	char m = 12;
+	return 0;
+
 }
-
-
-

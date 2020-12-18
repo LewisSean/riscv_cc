@@ -360,12 +360,12 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    file = '../c_file/ls3.c'
+    file = '../c_file/zc2.c'
     parser = CParser()
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)
         # ast.show()
-        with open('../c_file/ls3_out.out', 'w') as f:
+        with open('../c_file/zc2_out.out', 'w') as f:
            f.write(str(ast))
 
     sts = symtab_store(ast)
