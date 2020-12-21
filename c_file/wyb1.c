@@ -1,21 +1,23 @@
 int main() {
-	long long a = 2147483648;
-	long long int b = 2;
-	long c = 3;
-	char l = 11;
-	long int d = 4;
-	signed e = 5;
-	unsigned f = 6;
+	int aa = 1;
+	int bb = 2;
+	bb = aa ^ bb;
+	bb = aa | bb;
 
-	int g = 7;
-	long long gg = 77;
-	short int h = 8;
-	int hh = 88;
-	char ii = 99;
-	short i = 9;
-	char j = 10;
-	short jj = 1010;
-	char m = 12;
-	return 0;
+	short a = 1;
+	short b = 1;
+	b = a ^ b;
+	b = a | b;
 
+	char c = 1;
+	char d = 2;
+	d = d ^ c;
+	d = d | c;
+
+	long long e = 1;
+	long long f = 1;
+	e = e ^ f;
+	e = e | f;
+    	aa = aa++;
+	aa = ++aa;
 }
