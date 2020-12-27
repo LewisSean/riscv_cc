@@ -279,10 +279,104 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     # assList.append(Assembly())#栈指针？
     assList.append(Assembly('addi', 's0', 'sp', fs.size))  # 栈顶地址
     TempReg={}
-    TempVal={}
+    LList={}
     L=2
-    for i in range(len(f.quad_list)):
-        q=f.quad_list[i]
+    i=0
+    vis=[0]*len(f.quad_list)
+    falsei=[]
+    while i<len(f.quad_list):
+        q = f.quad_list[i]
+        if vis[i]==0:
+            vis[i]=1
+        else:
+            i=i+1
+            continue
+        if len(falsei)!=0 and falsei[-1]==i:
+            tmpreti=falsei[-1]
+            assList.append('.L' + str(LList['L_' + str(tmpreti)]))
+            falsei.pop()
+
+        nexti=i+1
+        if i!=len(f.quad_list)-1:
+            nextq=f.quad_list[i+1]
+
+        # existL=LList.get('L_'+str(i),-1)
+        # if existL!=-1:
+        #     assList.append('.L'+str(LList['L_'+str(i)]))
+        '''
+         跳转
+        '''
+        if i==21:
+            print(i)
+
+        if q.op == 'j':
+            nexti = int(q.dest[0][2:])
+            if nexti!=(i+1):
+                loc = LList.get(q.dest[0], -1)
+                if loc == -1:
+                    LList[q.dest[0]] = L
+                    L += 1
+                assList.append(Assembly('j', '.L' + str(LList[q.dest[0]])))
+                assList.append('.L' + str(LList[q.dest[0]]))
+            else:
+                i+=1
+                continue
+
+        if (q.op=='j<' or q.op=='j>' or q.op=='j=' or
+            q.op=='j<='or q.op=='j>='or q.op=='j!='or
+            q.op=='j=='):
+            if q.op !='j=':
+                vis[i+1]=1
+                vis[i+2]=1
+                vis[i+3]=1
+
+            if q.arg2[0]!='True':
+                Reg0 = r.GetEmptyF()
+                if not (isinstance(q.arg1[1],MyConstant) or isinstance(q.arg1[1],TmpValue)):
+                    if q.arg1[1].type=='int':
+                        r.funarg[Reg0].symname=q.arg1[0]
+                        assList.append(Assembly('lw', Reg0,symidx[q.arg1[0]][0],'(s0)'))
+                elif isinstance(q.arg1[1],TmpValue):
+                    Reg0='TmpValue'
+                else:
+                    assList.append(Assembly('li', Reg0, q.arg1[0]))
+                Reg1 = r.GetEmptyF()
+                assList.append(Assembly('li', Reg1, q.arg2[0]))
+
+            if q.op=='j<':
+                tmpi=i
+                while tmpi<len(f.quad_list):
+                    if f.quad_list[tmpi].op=='j=':
+                        break
+                    tmpi += 1
+                nexti = int(q.dest[0][2:])
+                tmpq=f.quad_list[tmpi+1]
+                loc = LList.get(tmpq.dest[0], -1)
+                if loc == -1:
+                    LList[tmpq.dest[0]] = L
+                    L += 1
+                assList.append(Assembly('ble', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
+
+            if q.op == 'j=':
+                nexti = int(q.dest[0][2:])
+                falsei.append(int(nextq.dest[0][2:]))
+                vis[i+1]=1
+
+            if q.op=='j>':
+                tmpi=i
+                while tmpi<len(f.quad_list):
+                    if f.quad_list[tmpi].op=='j=':
+                        break
+                    tmpi += 1
+                nexti = int(q.dest[0][2:])
+                tmpq=f.quad_list[tmpi+1]
+                loc = LList.get(tmpq.dest[0], -1)
+                if loc == -1:
+                    LList[tmpq.dest[0]] = L
+                    L += 1
+                assList.append(Assembly('ble', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
+
+
         '''
         一元操作符
         goal：
@@ -290,8 +384,9 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         '''
         if q.op == '=':
             # 赋值语句
-            if (q.arg1[0]=='False' or q.arg1[0]=='True') and isinstance(q.dest[1],TmpValue):
-                    TempVal[q.dest[0]]=q.arg1[0]
+            if (q.arg1[0]=='False' or q.arg1[0]=='True'):
+                    i=i+1
+                    continue
             if isinstance(q.arg1[1],TmpValue):#临时变量
                 if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
                     q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
@@ -596,45 +691,17 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     r.funarg[Reg0].isEmpty = True
                 if not (isinstance(q.arg2[1], MyConstant)):
                     r.funarg[Reg1].isEmpty = True
-        '''
-         跳转
-        '''
-        if (q.op=='j<' or q.op=='j>' or q.op=='j=' or
-            q.op=='j<='or q.op=='j>='or q.op=='j!='or
-            q.op=='j=='):
-            Reg0 = r.GetEmptyF()
-            if not (isinstance(q.arg1[1],MyConstant) or isinstance(q.arg1[1],TmpValue)):
-                if q.arg1[q.type]=='int':
-                    r.funarg[Reg0].symname=q.arg1[0]
-                    assList.append(Assembly('lw', Reg0,symidx[q.arg1[0]][0],'(s0)'))
-            elif isinstance(q.arg1[1],TmpValue):
-                Reg0='TmpValue'
-            else:
-                assList.append(Assembly('li', Reg0, q.arg1[0]))
-            Reg1 = r.GetEmptyF()
-            assList.append(Assembly('li', Reg1, q.arg2[0]))
 
-            if q.op=='j<':
-                assList[-1].arg2=int(q.arg2[0])-1
-                #真出口
-                assList.append(Assembly('bgt', Reg0, Reg1, '.L'+str(L)))
-                L+=1
-
-                assList.append(Assembly())
-                #真出口
-                assList.append(Assembly())
-                pass
-
-            if q.op=='j=':
-                pass
 
 
         '''
         内存操作
 
          '''
-
-
+        if nexti!=(i+1):
+            i=nexti
+        else:
+            i+=1
     assList.append(Assembly('lw', 's0', fs.size - 4, '(sp)'))  # 保存返回地址
     assList.append(Assembly('addi', 'sp', 'sp', fs.size))  # 恢复sp
     assList.append(Assembly('jr', 'ra'))  # 跳转到ra地址
@@ -651,14 +718,15 @@ if __name__ == '__main__':
     t = sts.get_symtab_of(ast)
     tt = t['main']
     structlist = GetStruct(t)
-    fs = GetStack(tt, structlist)
+    #fs = GetStack(tt, structlist)
 
     for ch in ast.ext:
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
             flowGraph = FlowGraph(ch, sts)
+
     temp = FunctionAss(flowGraph, tt, structlist)
     for i in temp:
         print(i)
     print(1)
-    print(2 ** 32)
+    # print(2 ** 32)
