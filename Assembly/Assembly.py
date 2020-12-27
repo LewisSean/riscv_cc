@@ -5,7 +5,7 @@ import re
 import math
 
 from Quadruple.block_graph import FlowGraph
-
+from Quadruple.quadruple import MyConstant,TmpValue
 
 class Assembly:
     def __init__(self, op=None, arg1=None, arg2=None, arg3=None):
@@ -54,11 +54,14 @@ class Regs:
             self.saved['s' + str(i)] = Register('s' + str(i))
         self.frame['s0'] = Register('s0')
 
-    def GetEmptyF(self, varList):
+    def GetEmptyF(self):
         for i in self.funarg.values():
             if self.funarg[i.name].isEmpty:
                 self.funarg[i.name].isEmpty = False
                 return i.name
+
+    def ValToReg(self,varlist):
+            pass
 
 
 class GlobalVar:
@@ -272,56 +275,109 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         print(i)
     assList = []
     assList.append(Assembly('addi', 'sp', 'sp', -fs.size))  # 分配栈
-    assList.append(Assembly('sw', 's0', s.size - 4, '(sp)'))  # 保存返回地址
+    assList.append(Assembly('sw', 's0', fs.size - 4, '(sp)'))  # 保存返回地址
     # assList.append(Assembly())#栈指针？
     assList.append(Assembly('addi', 's0', 'sp', fs.size))  # 栈顶地址
-
-    for q in f.quad_list:
+    TempReg={}
+    TempVal={}
+    L=2
+    for i in range(len(f.quad_list)):
+        q=f.quad_list[i]
         '''
-        一元变量
+        一元操作符
         goal：
-        1.+=,-=
-        2.4元祖问题，++--没有赋值给临时变量
-        3.赋值给R的问题
+        1.++--四元组存在问题
         '''
         if q.op == '=':
             # 赋值语句
-            Reg0 = r.GetEmptyF(varList)
-            r.funarg[Reg0].symname = q.dest[0]
-            assList.append(Assembly('li', Reg0, int(q.arg1[0]) % (2 ** 31)))
-            err = symidx.get(q.dest[0], -1)
-            if err == -1:
-                print("未声明变量" + str(q.dest[0]))
-            if varList[q.dest[0]].size == 4:
-                assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
-            elif varList[q.dest[0]].size == 2:
-                assList.append(Assembly('sh', Reg0, symidx[q.dest[0]][0], '(s0)'))
-            elif varList[q.dest[0]].size == 8:
-                Reg1 = r.GetEmptyF(varList)
-                r.funarg[Reg1].symname = q.dest[0]
-                print(int(q.arg1[0]) / (2 ** 31))
-                assList.append(Assembly('li', Reg0, math.floor(int(q.arg1[0]) / (2 ** 31))))
-                assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
-                assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][1], '(s0)'))
-            else:
-                assList.append(Assembly('sb', Reg0, symidx[q.dest[0]][0], '(s0)'))
-
-
+            if (q.arg1[0]=='False' or q.arg1[0]=='True') and isinstance(q.dest[1],TmpValue):
+                    TempVal[q.dest[0]]=q.arg1[0]
+            if isinstance(q.arg1[1],TmpValue):#临时变量
+                if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
+                    q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
+                    q.dest[1].type=='int' ):
+                    Reg0=TempReg[q.arg1[0]]
+                    assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                    r.funarg[Reg0].isEmpty=True
+                elif (q.dest[1].type=='short' or q.dest[1].type=='short int'):
+                    Reg0 = TempReg[q.arg1[0]]
+                    assList.append(Assembly('sh', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                    r.funarg[Reg0].isEmpty = True
+                elif (q.dest[1].type=='long long' or q.dest[1].type=='long long int'):
+                    Reg0 = TempReg[q.arg1[0]][0]
+                    Reg1 = TempReg[q.arg1[0]][1]
+                    assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                    assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][1], '(s0)'))
+                    r.funarg[Reg0].isEmpty = True
+                    r.funarg[Reg1].isEmpty = True
+                else:
+                    Reg0 = TempReg[q.arg1[0]]
+                    assList.append(Assembly('sb', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                    r.funarg[Reg0].isEmpty = True
+            else:#立即数和变量
+                Reg0 = r.GetEmptyF()
+                r.funarg[Reg0].symname = q.dest[0]
+                if isinstance(q.arg1[1],MyConstant):
+                    assList.append(Assembly('li', Reg0, int(q.arg1[0]) % (2 ** 31)))
+                    err = symidx.get(q.dest[0], -1)
+                    if err == -1:
+                        print("未声明变量" + str(q.dest[0]))
+                    if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
+                    q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
+                    q.dest[1].type=='int' ):
+                        assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                    elif (q.dest[1].type=='short' or q.dest[1].type=='short int'):
+                        assList.append(Assembly('sh', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                    elif (q.dest[1].type=='long long' or q.dest[1].type=='long long int'):
+                        Reg1 = r.GetEmptyF()
+                        r.funarg[Reg1].symname = q.dest[0]
+                        print(int(q.arg1[0]) / (2 ** 31))
+                        assList.append(Assembly('li', Reg1, math.floor(int(q.arg1[0]) / (2 ** 31))))
+                        assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][1], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                        r.funarg[Reg1].isEmpty = True
+                    else:
+                        assList.append(Assembly('sb', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                else:
+                    assList.append(Assembly('li', Reg0, symidx[q.arg1[0]][0]))
+                    err = symidx.get(q.dest[0], -1)
+                    if err == -1:
+                        print("未声明变量" + str(q.dest[0]))
+                    if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
+                    q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
+                    q.dest[1].type=='int' ):
+                        assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                    elif (q.dest[1].type=='short' or q.dest[1].type=='short int'):
+                        assList.append(Assembly('sh', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                    elif (q.dest[1].type=='long long' or q.dest[1].type=='long long int'):
+                        Reg1 = r.GetEmptyF()
+                        r.funarg[Reg1].symname = q.arg1[0]
+                        assList.append(Assembly('li', Reg0, symidx[q.arg1[0]][1]))
+                        assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][1], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
+                        r.funarg[Reg1].isEmpty = True
+                    else:
+                        assList.append(Assembly('sb', Reg0, symidx[q.dest[0]][0], '(s0)'))
+                        r.funarg[Reg0].isEmpty = True
             '''
-                二元运算
-                goal：
-                1.对于临时变量、立即数尚未处理
-                2.
+            ++--四元组存在问题。暂时不用
             '''
         if q.op=='++' or q.op=='--':
-            if varList[q.arg1[0]].size == 8:
-                Reg0 = r.GetEmptyF(varList)
-                Reg1 = r.GetEmptyF(varList)
-                Reg2 = r.GetEmptyF(varList)
-                Reg3 = r.GetEmptyF(varList)
-                Reg4 = r.GetEmptyF(varList)
-                Reg5 = r.GetEmptyF(varList)
-                Reg6 = r.GetEmptyF(varList)
+            if (q.dest[1].type=='long long' or q.dest[1].type=='long long int'):
+                Reg0 = r.GetEmptyF()
+                Reg1 = r.GetEmptyF()
+                Reg2 = r.GetEmptyF()
+                Reg3 = r.GetEmptyF()
+                Reg4 = r.GetEmptyF()
+                Reg5 = r.GetEmptyF()
+                Reg6 = r.GetEmptyF()
                 r.funarg[Reg1].symname = q.arg1[0]
                 r.funarg[Reg2].symname = q.arg1[0]
                 r.funarg[Reg3].symname = q.arg2[0]
@@ -341,14 +397,17 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 assList.append(Assembly('add', Reg4, Reg0,Reg6))
                 assList.append(Assembly('mv', Reg6, Reg4))
             else:
-                Reg0 = r.GetEmptyF(varList)
+                Reg0 = r.GetEmptyF()
                 r.funarg[Reg0].symname = q.arg1[0]
-                if varList[q.arg1[0]].size == 4:
-                    assList.append(Assembly('li', Reg0, symidx[q.arg1[0]][0]))
-                elif varList[q.arg1[0]].size == 2:
-                    assList.append(Assembly('lhu', Reg0, symidx[q.arg1[0]][0]))
+                if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
+                    q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
+                    q.dest[1].type=='int' ):
+                    assList.append(Assembly('lw', Reg0, symidx[q.arg1[0]][0],'s0'))
+                elif (q.dest[1].type=='short' or q.dest[1].type=='short int'):
+                    assList.append(Assembly('lhu', Reg0, symidx[q.arg1[0]][0],'s0'))
                 else:
-                    assList.append(Assembly('lbu', Reg0, symidx[q.arg1[0]][0]))
+                    assList.append(Assembly('lbu', Reg0, symidx[q.arg1[0]][0],'s0'))
+
                 if q.op=='++':
                     assList.append(Assembly('addi', Reg0, Reg0,1))
                     if varList[q.arg1[0]].size == 2:
@@ -359,30 +418,69 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     if varList[q.arg1[0]].size == 2:
                         assList.append(Assembly('slli', Reg0, Reg0, 16))
                         assList.append(Assembly('srli', Reg0, Reg0, 16))
+        '''
+         二元操作符
+         goal：
+         1.<>存疑
+         '''
+        if (q.op == '+' or q.op=='-' or q.op=='^'or
+            q.op=='|'or q.op=='&'or q.op=='<'or
+                q.op=='>'or q.op=='+='or q.op=='-='):
+            if q.op=='+=':
+                q.arg2=q.arg1
+                q.arg1=q.dest
+                q.op='+'
+            if q.op == '-=':
+                q.arg2 = q.arg1
+                q.arg1 = q.dest
+                q.op = '-'
+            # 交换位置，保证第二个位置为常量
+            if isinstance(q.arg1[1], MyConstant):
+                temp = q.arg1
+                q.arg1 = q.arg2
+                q.arg2 = temp
 
-        if q.op == '+' or q.op=='-' or q.op=='^'or q.op=='|'or q.op=='&':
-            err = symidx.get(q.arg1, -1)
-            if err == -1:
-                print("未声明变量" + str(q.arg1[0]))
-            err = symidx.get(q.arg2, -1)
-            if err == -1:
-                print("未声明变量" + str(q.arg2[0]))
-            if varList[q.arg1[0]].size == 8:
-                Reg0 = r.GetEmptyF(varList)
-                Reg1 = r.GetEmptyF(varList)
-                Reg2 = r.GetEmptyF(varList)
-                Reg3 = r.GetEmptyF(varList)
-                Reg4 = r.GetEmptyF(varList)
-                Reg5 = r.GetEmptyF(varList)
-                Reg6 = r.GetEmptyF(varList)
-                r.funarg[Reg1].symname = q.arg1[0]
-                r.funarg[Reg2].symname = q.arg1[0]
-                r.funarg[Reg3].symname = q.arg2[0]
-                r.funarg[Reg4].symname = q.arg2[0]
-                assList.append(Assembly('lw', Reg3, symidx[q.dest[0]][0], '(s0)'))
-                assList.append(Assembly('lw', Reg4, symidx[q.dest[0]][1], '(s0)'))
-                assList.append(Assembly('lw', Reg1, symidx[q.dest[0]][0], '(s0)'))
-                assList.append(Assembly('lw', Reg2, symidx[q.dest[0]][1], '(s0)'))
+            #long long后31位放在低位
+            if (q.arg1[1].type=='long long' or q.arg1[1].type=='long long int'):
+                Reg0 = r.GetEmptyF()
+                if isinstance(q.arg1[1],TmpValue):
+                    Reg1=TempReg[q.arg1[0]][0]
+                    Reg2=TempReg[q.arg1[0]][1]
+                else:
+                    Reg1 = r.GetEmptyF()
+                    Reg2 = r.GetEmptyF()
+
+                if isinstance(q.arg2[1],TmpValue):
+                    Reg3=TempReg[q.arg2[0]][0]
+                    Reg4=TempReg[q.arg2[0]][1]
+                else:
+                    Reg3 = r.GetEmptyF()
+                    Reg4 = r.GetEmptyF()
+                Reg5 = r.GetEmptyF()
+                Reg6 = r.GetEmptyF()
+                if not isinstance(q.arg1[1], MyConstant):
+                    r.funarg[Reg1].symname = q.arg1[0]
+                    r.funarg[Reg2].symname = q.arg1[0]
+                if not isinstance(q.arg2[1], MyConstant):
+                    r.funarg[Reg3].symname = q.arg2[0]
+                    r.funarg[Reg4].symname = q.arg2[0]
+
+                TempReg[q.dest[0]]=[Reg5,Reg6]
+                if not (isinstance(q.arg1[1], TmpValue) or isinstance(q.arg1[1], MyConstant)):
+                    assList.append(Assembly('lw', Reg1, symidx[q.arg1[0]][0], '(s0)'))
+                    assList.append(Assembly('lw', Reg2, symidx[q.arg1[0]][1], '(s0)'))
+                if not (isinstance(q.arg1[1], TmpValue) or isinstance(q.arg1[1], MyConstant)):
+                    assList.append(Assembly('lw', Reg3, symidx[q.arg2[0]][0], '(s0)'))
+                    assList.append(Assembly('lw', Reg4, symidx[q.arg2[0]][1], '(s0)'))
+
+                if isinstance(q.arg1[1], MyConstant):
+                    assList.append(Assembly('li', Reg1, int(q.arg2[0]) % (2 ** 31)))
+                    assList.append(Assembly('li', Reg2, math.floor(int(q.arg2[0]) / (2 ** 31))))
+
+                if isinstance(q.arg2[1], MyConstant):
+                    assList.append(Assembly('li', Reg3, int(q.arg2[0]) % (2 ** 31)))
+                    assList.append(Assembly('li', Reg4, math.floor(int(q.arg2[0]) / (2 ** 31))))
+
                 if q.op=='+':
                     assList.append(Assembly('add', Reg5, Reg3, Reg1))
                     assList.append(Assembly('mv', Reg0, Reg5))
@@ -390,6 +488,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     assList.append(Assembly('add', Reg6, Reg4, Reg2))#加进位
                     assList.append(Assembly('add', Reg4, Reg0, Reg6))
                     assList.append(Assembly('mv', Reg6, Reg4))
+
                 elif q.op=='-':
                     assList.append(Assembly('sub', Reg5, Reg3, Reg1))
                     assList.append(Assembly('mv', Reg0, Reg5))
@@ -406,48 +505,138 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 else:
                     assList.append(Assembly('and', Reg5, Reg3, Reg1))
                     assList.append(Assembly('and', Reg6, Reg4, Reg2))
+                r.funarg[Reg0].isEmpty= True
+                r.funarg[Reg1].isEmpty = True
+                r.funarg[Reg2].isEmpty = True
+                r.funarg[Reg3].isEmpty = True
+                r.funarg[Reg4].isEmpty = True
             else:
-                Reg0 = r.GetEmptyF(varList)
-                r.funarg[Reg0].symname = q.arg1[0]
-                Reg1 = r.GetEmptyF(varList)
-                r.funarg[Reg1].symname = q.arg2[0]
-                Reg2=r.GetEmptyF(varList)
-
-                if varList[q.arg1[0]].size == 4:
-                    assList.append(Assembly('li', Reg0, symidx[q.arg1[0]][0]))
-                    assList.append(Assembly('li', Reg1, symidx[q.arg2[0]][0]))
-                elif varList[q.arg1[0]].size == 2:
-                    assList.append(Assembly('lhu', Reg0, symidx[q.arg1[0]][0]))
-                    assList.append(Assembly('lhu', Reg1, symidx[q.arg2[0]][0]))
+                if isinstance(q.arg1[1],TmpValue):
+                    Reg0=TempReg[q.arg1[0]]
+                elif isinstance(q.arg1[1], MyConstant):
+                    Reg0 = q.arg1[0]
                 else:
-                    assList.append(Assembly('lbu', Reg0, symidx[q.arg1[0]][0]))
-                    assList.append(Assembly('lbu', Reg1, symidx[q.arg2[0]][0]))
+                    Reg0 = r.GetEmptyF()
+                if not isinstance(q.arg1[1], MyConstant):
+                    r.funarg[Reg0].symname = q.arg1[0]
+
+                if isinstance(q.arg2[1],TmpValue):
+                    Reg1=TempReg[q.arg2[0]]
+                elif isinstance(q.arg2[1],MyConstant):
+                    Reg1=q.arg2[0]
+                else:
+                    Reg1 = r.GetEmptyF()
+                if not isinstance(q.arg2[1],MyConstant):
+                    r.funarg[Reg1].symname = q.arg2[0]
+                Reg2=r.GetEmptyF()
+                TempReg[q.dest[0]]= Reg2
+
+                if (q.arg1[1].type=='int' or q.arg1[1].type=='long int' or
+                    q.arg1[1].type=='signed' or q.arg1[1].type=='unsigned' or
+                    q.arg1[1].type=='int' ):
+                    if not(isinstance(q.arg1[1],TmpValue) or isinstance(q.arg1[1],MyConstant)):
+                        assList.append(Assembly('lw', Reg0, symidx[q.arg1[0]][0],'(s0)'))
+                    if not(isinstance(q.arg2[1],TmpValue) or isinstance(q.arg2[1],MyConstant)):
+                        assList.append(Assembly('lw', Reg1, symidx[q.arg2[0]][0],'(s0)'))
+                elif (q.arg1[1].type=='short' or q.arg1[1].type=='short int'):
+                    if not(isinstance(q.arg1[1],TmpValue) or isinstance(q.arg1[1],MyConstant)):
+                        assList.append(Assembly('lhu', Reg0, symidx[q.arg1[0]][0],'(s0)'))
+                    if not(isinstance(q.arg2[1],TmpValue) or isinstance(q.arg2[1],MyConstant)):
+                        assList.append(Assembly('lhu', Reg1, symidx[q.arg2[0]][0],'(s0)'))
+                else:
+                    if not(isinstance(q.arg1[1],TmpValue) or isinstance(q.arg1[1],MyConstant)):
+                        assList.append(Assembly('lbu', Reg0, symidx[q.arg1[0]][0],'(s0)'))
+                    if not(isinstance(q.arg2[1],TmpValue) or isinstance(q.arg2[1],MyConstant)):
+                        assList.append(Assembly('lbu', Reg1, symidx[q.arg2[0]][0],'(s0)'))
 
                 if q.op=='+':
-                    assList.append(Assembly('add', Reg2, Reg0, Reg1))
-                    if varList[q.arg1[0]].size == 2:
-                        assList.append(Assembly('slli', Reg1, Reg1, 16))
-                        assList.append(Assembly('srli', Reg1, Reg1, 16))
+                    if isinstance(q.arg2[1],MyConstant):
+                        assList.append(Assembly('addi', Reg2, Reg0, Reg1))
+                    else:
+                        assList.append(Assembly('add', Reg2, Reg0, Reg1))
+                    if (q.arg1[1].type=='short' or q.arg1[1].type=='short int'):
+                        assList.append(Assembly('slli', Reg2, Reg2, 16))
+                        assList.append(Assembly('srli', Reg2, Reg2, 16))
+                    #TempReg[q.dest[0]]=Reg2
                 elif q.op=='-':
-                    assList.append(Assembly('sub', Reg2, Reg0, Reg1))
-                    if varList[q.arg1[0]].size == 2:
-                        assList.append(Assembly('slli', Reg1, Reg1, 16))
-                        assList.append(Assembly('srli', Reg1, Reg1, 16))
+                    if isinstance(q.arg2[1],MyConstant):
+                        assList.append(Assembly('addi', Reg2, Reg0, '-'+Reg1))
+                    else:
+                        assList.append(Assembly('sub', Reg2, Reg0, Reg1))
+                    if (q.arg1[1].type=='short' or q.arg1[1].type=='short int'):
+                        assList.append(Assembly('slli', Reg2, Reg2, 16))
+                        assList.append(Assembly('srli', Reg2, Reg2, 16))
+                    #TempReg[q.dest[0]] = Reg2
                 elif q.op=='^':
-                    assList.append(Assembly('xor', Reg2, Reg0, Reg1))
+                    if isinstance(q.arg2[1],MyConstant):
+                        assList.append(Assembly('xori', Reg2, Reg0, Reg1))
+                    else:
+                        assList.append(Assembly('xor', Reg2, Reg0, Reg1))
                 elif q.op=='|':
-                    assList.append(Assembly('or', Reg2, Reg0, Reg1))
+                    if isinstance(q.arg2[1], MyConstant):
+                        assList.append(Assembly('ori', Reg2, Reg0, Reg1))
+                    else:
+                        assList.append(Assembly('or', Reg2, Reg0, Reg1))
                 elif q.op == '&':
-                    assList.append(Assembly('and', Reg2, Reg0, Reg1))
+                    if isinstance(q.arg2[1], MyConstant):
+                        assList.append(Assembly('andi', Reg2, Reg0, Reg1))
+                    else:
+                        assList.append(Assembly('and', Reg2, Reg0, Reg1))
                 elif q.op=='<':
-                    assList.append(Assembly('slt', Reg2, Reg0, Reg1))
+                    if isinstance(q.arg2[1], MyConstant):
+                        assList.append(Assembly('slti', Reg2, Reg0, Reg1))
+                    else:
+                        assList.append(Assembly('slt', Reg2, Reg0, Reg1))
                     assList.append(Assembly('andi', Reg2, Reg2, '0xff'))
                 elif q.op == '>':
                     assList.append(Assembly('sgt', Reg2, Reg0, Reg1))
                     assList.append(Assembly('andi', Reg2, Reg2, '0xff'))
 
-    assList.append(Assembly('lw', 's0', s.size - 4, '(sp)'))  # 保存返回地址
-    assList.append(Assembly('addi', 'sp', 'sp', s.size))  # 恢复sp
+                if not (isinstance(q.arg1[1], MyConstant)):
+                    r.funarg[Reg0].isEmpty = True
+                if not (isinstance(q.arg2[1], MyConstant)):
+                    r.funarg[Reg1].isEmpty = True
+        '''
+         跳转
+        '''
+        if (q.op=='j<' or q.op=='j>' or q.op=='j=' or
+            q.op=='j<='or q.op=='j>='or q.op=='j!='or
+            q.op=='j=='):
+            Reg0 = r.GetEmptyF()
+            if not (isinstance(q.arg1[1],MyConstant) or isinstance(q.arg1[1],TmpValue)):
+                if q.arg1[q.type]=='int':
+                    r.funarg[Reg0].symname=q.arg1[0]
+                    assList.append(Assembly('lw', Reg0,symidx[q.arg1[0]][0],'(s0)'))
+            elif isinstance(q.arg1[1],TmpValue):
+                Reg0='TmpValue'
+            else:
+                assList.append(Assembly('li', Reg0, q.arg1[0]))
+            Reg1 = r.GetEmptyF()
+            assList.append(Assembly('li', Reg1, q.arg2[0]))
+
+            if q.op=='j<':
+                assList[-1].arg2=int(q.arg2[0])-1
+                #真出口
+                assList.append(Assembly('bgt', Reg0, Reg1, '.L'+str(L)))
+                L+=1
+
+                assList.append(Assembly())
+                #真出口
+                assList.append(Assembly())
+                pass
+
+            if q.op=='j=':
+                pass
+
+
+        '''
+        内存操作
+
+         '''
+
+
+    assList.append(Assembly('lw', 's0', fs.size - 4, '(sp)'))  # 保存返回地址
+    assList.append(Assembly('addi', 'sp', 'sp', fs.size))  # 恢复sp
     assList.append(Assembly('jr', 'ra'))  # 跳转到ra地址
     return assList
 
@@ -468,8 +657,8 @@ if __name__ == '__main__':
         if isinstance(ch, c_ast.FuncDef):
             print('--------------start to get flow graph--------------------')
             flowGraph = FlowGraph(ch, sts)
-   # temp = FunctionAss(flowGraph, tt, structlist)
-    #for i in temp:
-    #    print(i)
+    temp = FunctionAss(flowGraph, tt, structlist)
+    for i in temp:
+        print(i)
     print(1)
     print(2 ** 32)
