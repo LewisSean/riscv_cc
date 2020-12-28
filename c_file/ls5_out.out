@@ -44,16 +44,30 @@ FileAST(ext=[FuncDef(decl=Decl(name='main',
                                                                                 value='3'
                                                                                 )
                                                                  ),
-                                                   iftrue=Compound(block_items=[UnaryOp(op='p--',
-                                                                                        expr=ID(name='a'
-                                                                                                )
-                                                                                        )
+                                                   iftrue=Compound(block_items=[Assignment(op='=',
+                                                                                           lvalue=ID(name='a'
+                                                                                                     ),
+                                                                                           rvalue=BinaryOp(op='-',
+                                                                                                           left=ID(name='a'
+                                                                                                                   ),
+                                                                                                           right=Constant(type='int',
+                                                                                                                          value='1'
+                                                                                                                          )
+                                                                                                           )
+                                                                                           )
                                                                                ]
                                                                    ),
-                                                   iffalse=UnaryOp(op='p++',
-                                                                   expr=ID(name='a'
-                                                                           )
-                                                                   )
+                                                   iffalse=Assignment(op='=',
+                                                                      lvalue=ID(name='a'
+                                                                                ),
+                                                                      rvalue=BinaryOp(op='+',
+                                                                                      left=ID(name='a'
+                                                                                              ),
+                                                                                      right=Constant(type='int',
+                                                                                                     value='1'
+                                                                                                     )
+                                                                                      )
+                                                                      )
                                                    ),
                                                 Decl(name='c',
                                                      quals=[
