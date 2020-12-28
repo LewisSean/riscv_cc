@@ -587,7 +587,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('Return')
     def Return(u):
-        pass
+        dfs(u.expr)
 
     @register('Label')
     def Label(u:c_ast.Label):
@@ -647,6 +647,10 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
 
     @register('Continue')
     def Cast(u:c_ast.Continue):
+        pass
+
+    @register('EmptyStatement')
+    def EmptyStatement(u:c_ast.EmptyStatement):
         pass
 
     dfs(ast)

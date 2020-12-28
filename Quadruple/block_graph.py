@@ -38,7 +38,8 @@ class FlowGraph(object):
         self._gen_blocks([compound], [0], [-1])
         self._complete_graph()
         self.quad_list = []
-        self.gen_quad_list(finished=set())
+        offset = self.gen_quad_list(finished=set())
+        self.gen_quad_list(finished=set(), cur_block=-1, offset=offset)
         self._complete_quad_list()
         self.show()
 
@@ -108,6 +109,8 @@ class FlowGraph(object):
         finished.add(cur_block)
 
         for _suc in self.blocks[cur_block].suc:
+            if _suc == -1:
+                continue
             offset = self.gen_quad_list(finished, _suc, offset)
 
         return offset
@@ -146,7 +149,7 @@ class FlowGraph(object):
         self.loop_seed += 1
         return self.loop_seed
 
-    def _gen_blocks(self, nodes: list, pres: list, sucs: list = None, loop_id=-1):
+    def _gen_blocks(self, nodes: list, pres: list, sucs: list = None, loop_id=-1, judge=False):
         """
         递归函数，产生当前节点(们)的所有block
         :param nodes: 当前节点列表
@@ -293,7 +296,7 @@ class FlowGraph(object):
                 self.blocks[cond_out[0]].branch[False] = iffalse_in[0]
                 return cond_in, if_out
 
-            # Label
+            # 处理Label
             # Label的子节点是紧接着它的一个Node！！！！！！
             if isinstance(nodes[0], c_ast.Label):
                 in_label, out_label = self._gen_blocks([nodes[0].stmt], pres, sucs, loop_id=loop_id)
@@ -360,22 +363,21 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    file = '../c_file/zc2.c'
+    test_file = 'ls2.c'
+    file = '../c_file/'+test_file
     parser = CParser()
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)
         # ast.show()
-        with open('../c_file/zc2_out.out', 'w') as f:
+        with open('../c_file/{}_out.out'.format(test_file[:-2]), 'w') as f:
            f.write(str(ast))
 
     sts = symtab_store(ast)
     sts.show(ast)
 
     # map记录了ast当中所有节点的父节点：字典类型
-    # map = {}
-    # gen_ast_parents(ast, map)
-    # for item in map.keys():
-    #     print("{} : {}".format(type(item), type(map[item])))
+    pc_map = {}
+    gen_ast_parents(ast, pc_map)
 
     # 对FuncDef节点建立block有向图
     for ch in ast.ext:

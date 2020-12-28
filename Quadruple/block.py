@@ -1,9 +1,7 @@
 from pycparser import c_ast
-from pycparser import CParser
 from copy import deepcopy
 from symtab import symtab_store, SymTab, SymTabStore, StructSymbol, Symbol, ArraySymbol, BasicSymbol
 from Quadruple.quadruple import Quadruple, TmpValue, MyConstant
-import re
 
 
 class RegPool(dict):
@@ -24,7 +22,7 @@ class RegPool(dict):
 
 
 class Block(object):
-    def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, symtab:SymTabStore = None, reg_pool = None, Quadruples: list = None):
+    def __init__(self, id: int, ast_nodes: list, pre = None, suc = None, symtab: SymTabStore = None, reg_pool = None, Quadruples: list = None):
         if Quadruples is None:
             self.Quadruples = []
         self.id = id
@@ -130,7 +128,7 @@ class Block(object):
         if self.id == -1:
             res.append(Quadruple("end", None, None, None))
         # 处理分支节点
-        elif len(ast_nodes) == 1 and \
+        elif len(ast_nodes) == 1 and  \
                 isinstance(ast_nodes[0], (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp)):
             res_bool = expr(ast_nodes[0], symtab, res, reg_pool)
             res.append(Quadruple('j=', res_bool, ['True', MyConstant('true', 'bool')], ["B_{}_0", 'loc']))
@@ -144,11 +142,28 @@ class Block(object):
                 elif isinstance(node, c_ast.Decl):
                     dec(node, symtab, res, reg_pool)
 
+                elif isinstance(node, c_ast.Return):
+                    _return(node, symtab, res, reg_pool)
+
                 elif isinstance(node, c_ast.Break):
                     res.append(Quadruple('j', None, None, ['Break', 'loc']))
 
                 elif isinstance(node, c_ast.Continue):
                     res.append(Quadruple('j', None, None, ['Continue', 'loc']))
+
+                elif isinstance(ast_nodes[0], (c_ast.UnaryOp)):
+                    arg1 = expr(node, symtab, res, reg_pool)
+                    # 函数结束，释放可能的右值中间变量
+                    if isinstance(arg1[1], TmpValue):
+                        reg_pool.release_reg(arg1[0])
+
+
+def _return(node: c_ast.Return, symtab: SymTabStore, res: list, reg_pool: RegPool):
+    arg1 = expr(node.expr, symtab, res, reg_pool)
+    res.append(Quadruple('return', None, None, arg1))
+    # 函数结束，释放可能的右值中间变量
+    if isinstance(arg1[1], TmpValue):
+        reg_pool.release_reg(arg1[0])
 
 
 # 处理assignment
