@@ -273,6 +273,13 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     symidx = fs.stackidx
     for i in symidx.items():
         print(i)
+    LC=0
+    roList=[]
+    roList.append('    .section    .rodata')
+    aaList=[]#数组rodata
+    avis=[]#初始化后的数组
+    saList=[]#结构体的汇编rodata
+    svis=[]#初始化后的结构体
     assList = []
     assList.append(Assembly('addi', 'sp', 'sp', -fs.size))  # 分配栈
     assList.append(Assembly('sw', 's0', fs.size - 4, '(sp)'))  # 保存返回地址
@@ -291,10 +298,8 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         else:
             i=i+1
             continue
-        if len(falsei)!=0 and falsei[-1]==i:
-            tmpreti=falsei[-1]
-            assList.append('.L' + str(LList['L_' + str(tmpreti)]))
-            falsei.pop()
+        if i in falsei:
+            assList.append('.L' + str(LList['L_' + str(i)]))
 
         nexti=i+1
         if i!=len(f.quad_list)-1:
@@ -306,18 +311,19 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         '''
          跳转
         '''
-        if i==21:
-            print(i)
+        if i==len(f.quad_list)-1:
+            print(falsei)
 
         if q.op == 'j':
             nexti = int(q.dest[0][2:])
-            if nexti!=(i+1):
+            if nexti!=(i+1) or nexti<i:
                 loc = LList.get(q.dest[0], -1)
-                if loc == -1:
+                if loc  == -1:
                     LList[q.dest[0]] = L
                     L += 1
+                    falsei.append(nexti)
                 assList.append(Assembly('j', '.L' + str(LList[q.dest[0]])))
-                assList.append('.L' + str(LList[q.dest[0]]))
+                continue
             else:
                 i+=1
                 continue
@@ -518,6 +524,12 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
          goal：
          1.<>存疑
          '''
+        if q.op=='[]=':
+            arrayidx=symidx[q.dest[0]]
+            if q.dest[0] not in avis:
+                avis.append(q.dest[0])
+                roList.append()
+
         if (q.op == '+' or q.op=='-' or q.op=='^'or
             q.op=='|'or q.op=='&'or q.op=='<'or
                 q.op=='>'or q.op=='+='or q.op=='-='):
@@ -709,7 +721,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
 
 
 if __name__ == '__main__':
-    file = '../c_file/wyb1.c'
+    file = '../c_file/array.c'
     parser = CParser()
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)

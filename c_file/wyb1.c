@@ -5,9 +5,6 @@ int main() {
 	    if (a>2){
             a=a-1;
 	    }
-	    else{
-	        a=a+2;
-	    }
 	}
 	else {
 		a = a + 1;
