@@ -151,50 +151,51 @@ FileAST(ext=[Decl(name='go',
                                                                    ),
                                                      bitsize=None
                                                      ),
-                                                While(cond=Constant(type='int',
-                                                                    value='1'
-                                                                    ),
-                                                      stmt=EmptyStatement()
-                                                      ),
-                                                While(cond=Constant(type='int',
-                                                                    value='1'
-                                                                    ),
-                                                      stmt=UnaryOp(op='p++',
-                                                                   expr=ID(name='c'
+                                                Assignment(op='=',
+                                                           lvalue=ID(name='b'
+                                                                     ),
+                                                           rvalue=BinaryOp(op='+',
+                                                                           left=ID(name='b'
+                                                                                   ),
+                                                                           right=ID(name='c'
+                                                                                    )
                                                                            )
-                                                                   )
-                                                      ),
-                                                Compound(block_items=[Decl(name='cc',
-                                                                           quals=[
-                                                                                 ],
-                                                                           storage=[
-                                                                                   ],
-                                                                           funcspec=[
-                                                                                    ],
-                                                                           type=TypeDecl(declname='cc',
-                                                                                         quals=[
+                                                           ),
+                                                While(cond=Constant(type='int',
+                                                                    value='1'
+                                                                    ),
+                                                      stmt=Compound(block_items=[Decl(name='cc',
+                                                                                      quals=[
+                                                                                            ],
+                                                                                      storage=[
+                                                                                              ],
+                                                                                      funcspec=[
                                                                                                ],
-                                                                                         type=IdentifierType(names=['int'
-                                                                                                                   ]
+                                                                                      type=TypeDecl(declname='cc',
+                                                                                                    quals=[
+                                                                                                          ],
+                                                                                                    type=IdentifierType(names=['int'
+                                                                                                                              ]
+                                                                                                                        )
+                                                                                                    ),
+                                                                                      init=BinaryOp(op='+',
+                                                                                                    left=ID(name='a'
+                                                                                                            ),
+                                                                                                    right=ID(name='b'
                                                                                                              )
-                                                                                         ),
-                                                                           init=BinaryOp(op='+',
-                                                                                         left=ID(name='a'
-                                                                                                 ),
-                                                                                         right=ID(name='b'
-                                                                                                  )
-                                                                                         ),
-                                                                           bitsize=None
-                                                                           ),
-                                                                      Assignment(op='+=',
-                                                                                 lvalue=ID(name='cc'
-                                                                                           ),
-                                                                                 rvalue=Constant(type='int',
-                                                                                                 value='2'
-                                                                                                 )
-                                                                                 )
-                                                                     ]
-                                                         ),
+                                                                                                    ),
+                                                                                      bitsize=None
+                                                                                      ),
+                                                                                 Assignment(op='+=',
+                                                                                            lvalue=ID(name='cc'
+                                                                                                      ),
+                                                                                            rvalue=Constant(type='int',
+                                                                                                            value='2'
+                                                                                                            )
+                                                                                            )
+                                                                                ]
+                                                                    )
+                                                      ),
                                                 DoWhile(cond=BinaryOp(op='<',
                                                                       left=ID(name='c'
                                                                               ),
