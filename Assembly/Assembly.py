@@ -199,29 +199,45 @@ def GetStack(s: symtab.FuncSymbol, structlist) -> FunctionStack:
                     or var.element_type == 'long'
                     or var.element_type == 'signed'
                     or var.element_type == 'unsigned'):
-                loc -= var.element_size * var.dims[0]
+                sumsize=1
+                for i in range(len(var.dims)):
+                    sumsize *= var.dims[i]
+                loc -= var.element_size * sumsize
                 temp = []
-                for i in range(var.dims[0]):
+
+                for i in range(sumsize):
                     temp.append(loc + var.element_size * i)
                 stackidx[var.name] = temp
 
-            elif (var.type == 'long long'
-                  or var.type == 'long long int'):
-                loc -= var.element_size * var.dims[0]
+            elif (var.element_type == 'long long'
+                  or var.element_type == 'long long int'):
+                sumsize = 1
+                for i in range(len(var.dims)):
+                    sumsize *= var.dims[i]
+                loc -= var.element_size * sumsize
                 temp = []
-                for i in range(var.dims[0]):
+
+                for i in range(sumsize):
+                    temp.append(loc + var.element_size * i)
                     temp.append(loc + var.element_size * i + 4)
-                    temp.append(loc + var.element_size * i)
                 stackidx[var.name] = temp
 
-            elif (var.type == 'short int'
-                  or var.type == 'short'
-                  or var.type == 'char'):
+            elif (var.element_type == 'short int'
+                  or var.element_type == 'short'
+                  or var.element_type == 'char'):
                 temp = []
-                tmpnum = var.element_size * var.dims[0] / 4 + 1
+                sumsize=1
+                for i in range(len(var.dims)):
+                    sumsize *= var.dims[i]
+
+                if var.element_size * sumsize%4!=0:
+
+                    tmpnum = var.element_size * sumsize // 4 + 1
+                else:
+                    tmpnum = var.element_size * sumsize // 4
                 loc -= tmpnum * 4
-                for i in range(tmpnum):
-                    temp.append(loc + 4 * i)
+                for i in range(sumsize):
+                    temp.append(loc + var.element_size * i)
             stackidx[var.name] = temp
             lasttype = 3
     if loc % 16 != 0:
@@ -276,9 +292,10 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     LC=0
     roList=[]
     roList.append('    .section    .rodata')
-    aaList=[]#数组rodata
-    avis=[]#初始化后的数组
-    saList=[]#结构体的汇编rodata
+    sroList=[]
+    sroList.append('    .section    .srodata,"a"')
+    avis={}#初始化后的数组
+    #saList=[]#结构体的汇编rodata
     svis=[]#初始化后的结构体
     assList = []
     assList.append(Assembly('addi', 'sp', 'sp', -fs.size))  # 分配栈
@@ -289,6 +306,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     LList={}
     L=2
     i=0
+    retarr=0
     vis=[0]*len(f.quad_list)
     falsei=[]
     while i<len(f.quad_list):
@@ -420,9 +438,6 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 r.funarg[Reg0].symname = q.dest[0]
                 if isinstance(q.arg1[1],MyConstant):
                     assList.append(Assembly('li', Reg0, int(q.arg1[0]) % (2 ** 31)))
-                    err = symidx.get(q.dest[0], -1)
-                    if err == -1:
-                        print("未声明变量" + str(q.dest[0]))
                     if (q.dest[1].type=='int' or q.dest[1].type=='long int' or
                     q.dest[1].type=='signed' or q.dest[1].type=='unsigned' or
                     q.dest[1].type=='int' ):
@@ -436,6 +451,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                         r.funarg[Reg1].symname = q.dest[0]
                         print(int(q.arg1[0]) / (2 ** 31))
                         assList.append(Assembly('li', Reg1, math.floor(int(q.arg1[0]) / (2 ** 31))))
+
                         assList.append(Assembly('sw', Reg0, symidx[q.dest[0]][0], '(s0)'))
                         assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][1], '(s0)'))
                         r.funarg[Reg0].isEmpty = True
@@ -524,15 +540,11 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
          goal：
          1.<>存疑
          '''
-        if q.op=='[]=':
-            arrayidx=symidx[q.dest[0]]
-            if q.dest[0] not in avis:
-                avis.append(q.dest[0])
-                roList.append()
 
         if (q.op == '+' or q.op=='-' or q.op=='^'or
             q.op=='|'or q.op=='&'or q.op=='<'or
-                q.op=='>'or q.op=='+='or q.op=='-='):
+            q.op=='>'or q.op=='+='or q.op=='-='or
+            q.op=='*'):
             if q.op=='+=':
                 q.arg2=q.arg1
                 q.arg1=q.dest
@@ -595,6 +607,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     assList.append(Assembly('add', Reg6, Reg4, Reg2))#加进位
                     assList.append(Assembly('add', Reg4, Reg0, Reg6))
                     assList.append(Assembly('mv', Reg6, Reg4))
+
 
                 elif q.op=='-':
                     assList.append(Assembly('sub', Reg5, Reg3, Reg1))
@@ -665,6 +678,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                         assList.append(Assembly('slli', Reg2, Reg2, 16))
                         assList.append(Assembly('srli', Reg2, Reg2, 16))
                     #TempReg[q.dest[0]]=Reg2
+
                 elif q.op=='-':
                     if isinstance(q.arg2[1],MyConstant):
                         assList.append(Assembly('addi', Reg2, Reg0, '-'+Reg1))
@@ -673,7 +687,14 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     if (q.arg1[1].type=='short' or q.arg1[1].type=='short int'):
                         assList.append(Assembly('slli', Reg2, Reg2, 16))
                         assList.append(Assembly('srli', Reg2, Reg2, 16))
-                    #TempReg[q.dest[0]] = Reg2
+                    #TempReg[q.dest[0]] =
+                elif q.op=='*':
+                    if isinstance(q.arg2[1], MyConstant):
+                        Reg1=r.GetEmptyF()
+                        assList.append(Assembly('mul', Reg2, Reg0, Reg1))
+                        r.funarg[Reg1].isEmpty=True
+                    else:
+                        assList.append(Assembly('mul', Reg2, Reg0, Reg1))
                 elif q.op=='^':
                     if isinstance(q.arg2[1],MyConstant):
                         assList.append(Assembly('xori', Reg2, Reg0, Reg1))
@@ -704,8 +725,111 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 if not (isinstance(q.arg2[1], MyConstant)):
                     r.funarg[Reg1].isEmpty = True
 
+        if q.op=='[]=':
+            arrayidx=symidx[q.dest[0]]
+            tmpRval = {}
 
+            if q.dest[0] not in avis.keys():
+                Reg0 = r.GetEmptyF()
+                if q.dest[1].element_size==4:
+                    roList.append('    .align 2')
+                    roList.append('.LC' + str(LC) + ':')
+                    roList.append('    .word ' + q.arg1[0])
+                    assList.append(Assembly('lui',Reg0,'%hi(.LC'+str(LC)+')'))
+                    Reg1 = r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, '%lo(.LC' + str(LC) + ')', '(' + Reg0 + ')'))
+                    Reg2=r.GetEmptyF()
+                    assList.append(Assembly('sw', Reg1, arrayidx[int(q.arg2[0])//4], '(s0)'))
+                    assList.append(Assembly('addi', Reg2, Reg0,'%lo(.LC' + str(LC) + ')'))
 
+                    avis[q.dest[0]]=[LC,Reg2]
+                    r.funarg[Reg0].isEmpty=True
+                    r.funarg[Reg1].isEmpty = True
+                elif q.dest[1].element_size==2:
+                    roList.append('    .align 2')
+                    roList.append('.LC' + str(LC) + ':')
+                    roList.append('    .half ' + q.arg1[0])
+                    assList.append(Assembly('lui', Reg0, '%hi(.LC' + str(LC) + ')'))
+                    Reg1 = r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, '%lo(.LC' + str(LC) + ')', '(' + Reg0 + ')'))
+                    Reg2 = r.GetEmptyF()
+                    assList.append(Assembly('sh', Reg1, arrayidx[int(q.arg2[0]) // 2], '(s0)'))
+                    assList.append(Assembly('addi', Reg2, Reg0, '%lo(.LC' + str(LC) + ')'))
+                    avis[q.dest[0]] = [LC, Reg2]
+                    r.funarg[Reg0].isEmpty = True
+                    r.funarg[Reg1].isEmpty = True
+                elif q.dest[1].element_size==1:
+                    sroList.append('    .align 2')
+                    sroList.append('.LC' + str(LC) + ':')
+                    sroList.append('    .byte ' + q.arg1[0])
+                    assList.append(Assembly('lui', Reg0, '%hi(.LC' + str(LC) + ')'))
+                    Reg1 = r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, '%lo(.LC' + str(LC) + ')', '(' + Reg0 + ')'))
+                    Reg2 = r.GetEmptyF()
+                    assList.append(Assembly('sb', Reg1, arrayidx[int(q.arg2[0]) // 2], '(s0)'))
+                    assList.append(Assembly('addi', Reg2, Reg0, '%lo(.LC' + str(LC) + ')'))
+                    avis[q.dest[0]] = [LC, Reg2]
+                    r.funarg[Reg0].isEmpty = True
+                    r.funarg[Reg1].isEmpty = True
+                else:
+                    roList.append('    .align 3')
+                    roList.append('.LC' + str(LC) + ':')
+
+                    roList.append('    .word ' + str(int(q.arg1[0]) % (2 ** 31)))
+                    roList.append('    .word ' + str(math.floor(int(q.arg1[0]) / (2 ** 31))))
+                    assList.append(Assembly('lui', Reg0, '%hi(.LC' + str(LC) + ')'))
+                    Reg1 = r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, '%lo(.LC' + str(LC) + ')', '(' + Reg0 + ')'))
+
+                    Reg2 = r.GetEmptyF()
+                    Reg3=r.GetEmptyF()
+                    assList.append(Assembly('addi', Reg2, Reg0, '%lo(.LC' + str(LC) + ')'))
+                    avis[q.dest[0]] = [LC, Reg2]
+                    assList.append(Assembly('lw', Reg3, 4, '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('sw', Reg1, arrayidx[1], '(s0)'))
+                    assList.append(Assembly('sw', Reg3, arrayidx[1], '(s0)'))
+                    r.funarg[Reg0].isEmpty = True
+                    r.funarg[Reg1].isEmpty = True
+                    r.funarg[Reg3].isEmpty=True
+                LC += 1
+            else:
+                if q.dest[1].element_size==4:
+                    roList.append('    .word '+q.arg1[0])
+                    Reg1=r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, q.arg2[0], '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('sw',Reg1,arrayidx[int(q.arg2[0])//4],'(s0)'))
+                    r.funarg[Reg1].isEmpty=True
+                    if nextq.op !='[]=' or nextq.dest[0]!=q.dest[0]:
+                        r.funarg[avis[q.dest[0]][1]].isEmpty=True
+                elif q.dest[1].element_size==2:
+                    roList.append('    .half '+q.arg1[0])
+                    Reg1=r.GetEmptyF()
+                    assList.append(Assembly('lhu', Reg1, q.arg2[0], '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('sh',Reg1,arrayidx[int(q.arg2[0])//2],'(s0)'))
+                    r.funarg[Reg1].isEmpty=True
+                    if nextq.op !='[]=' or nextq.dest[0]!=q.dest[0]:
+                        r.funarg[avis[q.dest[0]][1]].isEmpty=True
+                elif q.dest[1].element_size==1:
+                    sroList.append('    .byte '+q.arg1[0])
+                    Reg1=r.GetEmptyF()
+                    assList.append(Assembly('lbu', Reg1, q.arg2[0], '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('sb',Reg1,arrayidx[int(q.arg2[0])//2],'(s0)'))
+                    r.funarg[Reg1].isEmpty=True
+                    if nextq.op !='[]=' or nextq.dest[0]!=q.dest[0]:
+                        r.funarg[avis[q.dest[0]][1]].isEmpty=True
+                else:
+                    roList.append('    .word ' + str(int(q.arg1[0]) % (2 ** 31)))
+                    roList.append('    .word ' + str(math.floor(int(q.arg1[0]) / (2 ** 31))))
+                    Reg1 = r.GetEmptyF()
+                    Reg2 = r.GetEmptyF()
+                    assList.append(Assembly('lw', Reg1, int(q.arg1[0]) % (2 ** 31), '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('lw', Reg2, math.floor(int(q.arg1[0]) / (2 ** 31)), '(' + avis[q.dest[0]][1] + ')'))
+                    assList.append(Assembly('sw', Reg1, arrayidx[int(q.arg2[0]) // 4], '(s0)'))
+                    assList.append(Assembly('sw', Reg2, arrayidx[int(q.arg2[0]) // 4+1], '(s0)'))
+                    r.funarg[Reg1].isEmpty = True
+                    r.funarg[Reg2].isEmpty = True
+                    if nextq.op != '[]=' or nextq.dest[0] != q.dest[0]:
+                        r.funarg[avis[q.dest[0]][1]].isEmpty = True
         '''
         内存操作
 
@@ -717,7 +841,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     assList.append(Assembly('lw', 's0', fs.size - 4, '(sp)'))  # 保存返回地址
     assList.append(Assembly('addi', 'sp', 'sp', fs.size))  # 恢复sp
     assList.append(Assembly('jr', 'ra'))  # 跳转到ra地址
-    return assList
+    return sroList+roList+assList
 
 
 if __name__ == '__main__':
