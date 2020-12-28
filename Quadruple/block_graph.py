@@ -5,7 +5,7 @@ from pycparser import CParser
 from copy import deepcopy
 from symtab import symtab_store, SymTab, SymTabStore
 from Quadruple.block import Block, RegPool
-
+import queue
 
 class FlowGraph(object):
     """
@@ -38,7 +38,7 @@ class FlowGraph(object):
         self._gen_blocks([compound], [0], [-1])
         self._complete_graph()
         self.quad_list = []
-        offset = self.gen_quad_list(finished=set())
+        offset = self.gen_quad_list_bfs()
         self.gen_quad_list(finished=set(), cur_block=-1, offset=offset)
         self._complete_quad_list()
         self.show()
@@ -93,6 +93,7 @@ class FlowGraph(object):
         for k in self.blocks.keys():
             self.blocks[k].complete_quadruples()
 
+    # dfs
     def gen_quad_list(self, finished: set, cur_block=0, offset=0):
         # 返回 self.blocks[cur_block].end
         if cur_block in finished:
@@ -112,6 +113,37 @@ class FlowGraph(object):
             if _suc == -1:
                 continue
             offset = self.gen_quad_list(finished, _suc, offset)
+
+        return offset
+
+    # bfs
+    def gen_quad_list_bfs(self):
+        cur_block = 0
+        offset = 0
+        finished = set()
+        # 返回 self.blocks[cur_block].end
+        que = queue.Queue()
+        que.put(cur_block)
+        while not que.empty():
+            cur_block = que.get()
+
+            if cur_block in finished:
+                continue
+            for quad in self.blocks[cur_block].Quadruples:
+                quad.line += offset
+
+            self.blocks[cur_block].begin = offset
+            self.blocks[cur_block].end = offset = offset + len(self.blocks[cur_block].Quadruples)
+
+            self.blocks[cur_block].adjust()
+            self.quad_list.extend(self.blocks[cur_block].Quadruples)
+            # offset是每个后继block的起始行
+            finished.add(cur_block)
+
+            for _suc in self.blocks[cur_block].suc:
+                if _suc == -1:
+                    continue
+                que.put(_suc)
 
         return offset
 
@@ -363,7 +395,7 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    test_file = 'ls2.c'
+    test_file = 'ls5.c'
     file = '../c_file/'+test_file
     parser = CParser()
     with open(file, 'r') as f:

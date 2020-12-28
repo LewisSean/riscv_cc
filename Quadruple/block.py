@@ -151,7 +151,7 @@ class Block(object):
                 elif isinstance(node, c_ast.Continue):
                     res.append(Quadruple('j', None, None, ['Continue', 'loc']))
 
-                elif isinstance(ast_nodes[0], (c_ast.UnaryOp)):
+                elif isinstance(ast_nodes[0], c_ast.UnaryOp):
                     arg1 = expr(node, symtab, res, reg_pool)
                     # 函数结束，释放可能的右值中间变量
                     if isinstance(arg1[1], TmpValue):
