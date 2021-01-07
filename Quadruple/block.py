@@ -622,7 +622,7 @@ def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, de
         t = symtab.get_symtab_of(node)
         sym = t.get_symbol(node.name.name)
         tmp = reg_pool.get_reg(sym.ret_type)
-        params = ['func_params', sym]
+        params = ['func_params']
         for _expr in node.args.exprs:
             params.append(expr(_expr, symtab, res, reg_pool))
         res.append(Quadruple('call', (node.name.name, sym), params, tmp))
