@@ -1095,7 +1095,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
 if __name__ == '__main__':
     print(-71%4)
     print(-62%-8)
-    file = '../c_file/point.c'
+    file = '../c_file/array.c'
     parser = CParser()
     with open(file, 'r') as f:
         ast = parser.parse(f.read(), file)

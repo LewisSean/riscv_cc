@@ -22,6 +22,7 @@ class FlowGraph(object):
         self.bof = True
         # 增设entry和exit两个block(不包含实际四元组)，id分别为0和-1
         self.blocks = dict()
+        self.if_counts = dict()
         self.blocks[0] = Block(0, [])
         self.blocks[-1] = Block(-1, [])
         # block的id生成种子，自增生成id
@@ -38,7 +39,7 @@ class FlowGraph(object):
         self._gen_blocks([compound], [0], [-1])
         self._complete_graph()
         self.quad_list = []
-        offset = self.gen_quad_list_bfs()
+        offset = self.gen_quad_list(finished=set())
         self.gen_quad_list(finished=set(), cur_block=-1, offset=offset)
         self._complete_quad_list()
         self.show()
@@ -94,8 +95,9 @@ class FlowGraph(object):
             self.blocks[k].complete_quadruples()
 
     # dfs
-    def gen_quad_list(self, finished: set, cur_block=0, offset=0):
+    def gen_quad_list(self, finished: set, cur_block=0, offset=0, end_block=-1):
         # 返回 self.blocks[cur_block].end
+        print("--> {}".format(cur_block))
         if cur_block in finished:
             return offset
         for quad in self.blocks[cur_block].Quadruples:
@@ -109,17 +111,68 @@ class FlowGraph(object):
         # offset是每个后继block的起始行
         finished.add(cur_block)
 
+        # 处理if分支
+        if self.blocks[cur_block].is_if:
+            # 找到if出口
+            exit_id = self.find_if_exit(cur_block)
+            print("if exit: {}".format(exit_id))
+            end_block = exit_id
+            if end_block not in self.if_counts.keys():
+                self.if_counts[end_block] = 2
+            else:
+                self.if_counts[end_block] += 1
+
+        flag = False
         for _suc in self.blocks[cur_block].suc:
-            if _suc == -1:
+            if _suc == end_block:
+                flag = True
                 continue
-            offset = self.gen_quad_list(finished, _suc, offset)
+            offset = self.gen_quad_list(finished, _suc, offset, end_block)
+        if flag and end_block != -1:
+            if self.if_counts[end_block] == 1:
+                offset = self.gen_quad_list(finished, end_block, offset, -1)
+            self.if_counts[end_block] -= 1
 
         return offset
 
+    def find_if_exit(self, id):
+        ifTrue = self.blocks[id].branch[True] # ifTrue
+        path = set()
+        que = queue.Queue()
+        que.put(ifTrue)
+        while not que.empty():
+            cur = que.get()
+            if cur in path:
+                continue
+            else:
+                path.add(cur)
+            for _suc in self.blocks[cur].suc:
+                que.put(_suc)
+
+        ifFalse = self.blocks[id].branch[False]  # ifFalse
+        path2 = set()
+        que2 = queue.Queue()
+        que2.put(ifFalse)
+        while not que2.empty():
+            cur = que2.get()
+            if cur in path2:
+                continue
+            else:
+                path2.add(cur)
+            for _suc in self.blocks[cur].suc:
+                if _suc in path:
+                  return _suc
+                que2.put(_suc)
+
+        return -2
+
     # bfs
-    def gen_quad_list_bfs(self):
+    # 需要解决的问题，如何优先处理if else 里面的if的block
+    def gen_quad_list_bfs(self, offset=0, end=-1):
+
+        to_show = []
+
         cur_block = 0
-        offset = 0
         finished = set()
         # 返回 self.blocks[cur_block].end
         que = queue.Queue()
@@ -127,8 +180,18 @@ class FlowGraph(object):
         while not que.empty():
             cur_block = que.get()
 
+            to_show.append(cur_block)
+
             if cur_block in finished:
                 continue
+
+            # 对if情况特殊处理
+            if self.blocks[cur_block].is_if == True:
+                # 找到if出口
+                exit_id = self.find_if_exit(cur_block)
+                print("if exit: {}".format(exit_id))
+
+
             for quad in self.blocks[cur_block].Quadruples:
                 quad.line += offset
 
@@ -141,9 +204,13 @@ class FlowGraph(object):
             finished.add(cur_block)
 
             for _suc in self.blocks[cur_block].suc:
-                if _suc == -1:
+                if _suc == end:
                     continue
                 que.put(_suc)
+
+        print("//////////////////////////////////////")
+        for i in to_show:
+            print(i)
 
         return offset
 
@@ -181,7 +248,7 @@ class FlowGraph(object):
         self.loop_seed += 1
         return self.loop_seed
 
-    def _gen_blocks(self, nodes: list, pres: list, sucs: list = None, loop_id=-1, judge=False):
+    def _gen_blocks(self, nodes: list, pres: list, sucs: list = None, loop_id=-1, is_if=False):
         """
         递归函数，产生当前节点(们)的所有block
         :param nodes: 当前节点列表
@@ -196,6 +263,8 @@ class FlowGraph(object):
             self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab, self.reg_pool)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
+            if is_if:
+                self.blocks[new_id].is_if = True
 
             return [new_id], [new_id]
 
@@ -205,6 +274,8 @@ class FlowGraph(object):
             self.blocks[new_id] = Block(new_id, nodes, pres, sucs, self.symtab, self.reg_pool)
             if loop_id != -1:
                 self.blocks[new_id].name = "loop_{}".format(loop_id)
+            if is_if:
+                self.blocks[new_id].is_if = True
 
             return [new_id], [new_id]
         # 处理单个节点，往往需要对子节点递归调用，反例：只有一个四元组的block
@@ -218,6 +289,8 @@ class FlowGraph(object):
                 if len(nodes[0].block_items) == 0:
                     new_id = self._get_id()
                     self.blocks[new_id] = Block(new_id, [], pres, sucs, self.symtab, self.reg_pool)
+                    if is_if:
+                        self.blocks[new_id].is_if = True
 
                     return [new_id], [new_id]
 
@@ -318,7 +391,7 @@ class FlowGraph(object):
 
             # 处理If
             if isinstance(nodes[0], c_ast.If):
-                cond_in, cond_out = self._gen_blocks([nodes[0].cond], pres, loop_id=loop_id)
+                cond_in, cond_out = self._gen_blocks([nodes[0].cond], pres, loop_id=loop_id, is_if=True)
                 iftrue_in, iftrue_out = self._gen_blocks([nodes[0].iftrue], cond_out, sucs, loop_id=loop_id)
                 iffalse_in, iffalse_out = self._gen_blocks([nodes[0].iffalse], cond_out, sucs, loop_id=loop_id)
                 if_out = iftrue_out + iffalse_out
@@ -395,7 +468,7 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    test_file = 'ls5.c'
+    test_file = 'wyb1.c'
     file = '../c_file/'+test_file
     parser = CParser()
     with open(file, 'r') as f:

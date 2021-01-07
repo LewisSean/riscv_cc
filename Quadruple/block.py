@@ -26,6 +26,7 @@ class Block(object):
         if Quadruples is None:
             self.Quadruples = []
         self.id = id
+        self.is_if = False
         if pre is not None:
             self.pre = deepcopy(pre)
         else:
