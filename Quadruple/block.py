@@ -130,7 +130,7 @@ class Block(object):
             res.append(Quadruple("end", None, None, None))
         # 处理分支节点
         elif len(ast_nodes) == 1 and  \
-                isinstance(ast_nodes[0], (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp)):
+                isinstance(ast_nodes[0], (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp, c_ast.FuncCall)):
             res_bool = expr(ast_nodes[0], symtab, res, reg_pool)
             res.append(Quadruple('j=', res_bool, ['True', MyConstant('true', 'bool')], ["B_{}_0", 'loc']))
             res.append(Quadruple('j', None, None, ["B_{}_0", 'loc']))
@@ -140,6 +140,11 @@ class Block(object):
             for node in ast_nodes:
                 if isinstance(node, c_ast.Assignment):
                     assign(node, symtab, res, reg_pool)
+
+                elif isinstance(node, c_ast.FuncCall):
+                    arg1 = expr(node, symtab, res, reg_pool)
+                    reg_pool.release_reg(arg1[0])
+
                 elif isinstance(node, c_ast.Decl):
                     dec(node, symtab, res, reg_pool)
 
@@ -347,6 +352,7 @@ def get_sym_by_name(node, name: str, symtab):
     sym = t.get_symbol(name)
     return sym
 
+
 # 前闭后开
 def variable_init(node: c_ast.Decl, dest, arg1, res, symtab, reg_pool, offset=None, arr_sym=None, struct_arr=False, arr_struct=False, struct_sym=None, start_index=0, end_index=None):
     if offset is None:
@@ -437,7 +443,7 @@ def dec(node: c_ast.Decl, symtab: SymTabStore, res: list, reg_pool: RegPool):
     if node.init is None:
         return
     if isinstance(node.init, (c_ast.BinaryOp, c_ast.ID, c_ast.Constant, c_ast.UnaryOp,\
-                              c_ast.TernaryOp, c_ast.InitList, c_ast.ArrayRef)):
+                              c_ast.TernaryOp, c_ast.InitList, c_ast.ArrayRef, c_ast.FuncCall)):
         arg1 = expr(node.init, symtab, res, reg_pool)
     else:
         pass
@@ -609,8 +615,18 @@ def get_struct_atoms(struct_sym: StructSymbol, symtab: SymTab):
 # 处理右值表达式！！！！
 def expr(node: c_ast.Node, symtab: SymTabStore, res: list, reg_pool: RegPool, dest = None):
     if isinstance(node, (c_ast.Constant,)):
-        node.show(attrnames=True, nodenames=True, showcoord=True)
+        # node.show(attrnames=True, nodenames=True, showcoord=True)
         return node.value, MyConstant(node.value, node.type)
+
+    elif isinstance(node, (c_ast.FuncCall,)):
+        t = symtab.get_symtab_of(node)
+        sym = t.get_symbol(node.name.name)
+        tmp = reg_pool.get_reg(sym.ret_type)
+        params = ['func_params']
+        for _expr in node.args.exprs:
+            params.append(expr(_expr, symtab, res, reg_pool))
+        res.append(Quadruple('call', (node.name.name, sym), params, tmp))
+        return tmp
 
     elif isinstance(node, (c_ast.ID,)):
         t: SymTab = symtab.get_symtab_of(node)

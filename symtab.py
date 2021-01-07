@@ -142,6 +142,7 @@ class FuncSymbol(Symbol):
         super().__init__(name)
         self.params_symtab = SymTab(None)
         self.frame_size = None
+        self.ret_type = None
         self.local_symbols = []
 
     def add_param_symbol(self, sym:Symbol):
@@ -417,7 +418,7 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         in_struct = False
         offset = saved_offset
 
-        return {'size':size, 'struct_symbol':struct_symbol, 'type':type_str}
+        return {'size':size, 'struct_symbol': struct_symbol, 'type':type_str}
 
     @register('TypeDecl')
     def type_decl(u:c_ast.TypeDecl) -> dict:
@@ -493,7 +494,8 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
         于是,我们约定在函数内部,返回值的offset为0.
         '''
         res = dfs(u.decl)
-        x = res['func_symbol'] # 代表此函数本身的符号,类型是FuncSymbol
+        x:FuncSymbol = res['func_symbol'] # 代表此函数本身的符号,类型是FuncSymbol
+        x.ret_type = u.decl.type.type.type.names[0]
         
         for sym in res['param_symbols']: # 此函数的参数的符号
             t.add_symbol(sym)
@@ -652,6 +654,12 @@ def symtab_store(ast:c_ast.Node) -> SymTabStore:
     @register('EmptyStatement')
     def EmptyStatement(u:c_ast.EmptyStatement):
         pass
+
+    @register('FuncCall')
+    def EmptyStatement(u:c_ast.FuncCall):
+        dfs(u.name)
+        for arg in u.args:
+            dfs(arg)
 
     dfs(ast)
     return sts

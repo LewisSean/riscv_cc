@@ -1,4 +1,69 @@
-FileAST(ext=[FuncDef(decl=Decl(name='main',
+FileAST(ext=[FuncDef(decl=Decl(name='add',
+                               quals=[
+                                     ],
+                               storage=[
+                                       ],
+                               funcspec=[
+                                        ],
+                               type=FuncDecl(args=ParamList(params=[Decl(name='a',
+                                                                         quals=[
+                                                                               ],
+                                                                         storage=[
+                                                                                 ],
+                                                                         funcspec=[
+                                                                                  ],
+                                                                         type=TypeDecl(declname='a',
+                                                                                       quals=[
+                                                                                             ],
+                                                                                       type=IdentifierType(names=['int'
+                                                                                                                 ]
+                                                                                                           )
+                                                                                       ),
+                                                                         init=None,
+                                                                         bitsize=None
+                                                                         ),
+                                                                    Decl(name='b',
+                                                                         quals=[
+                                                                               ],
+                                                                         storage=[
+                                                                                 ],
+                                                                         funcspec=[
+                                                                                  ],
+                                                                         type=TypeDecl(declname='b',
+                                                                                       quals=[
+                                                                                             ],
+                                                                                       type=IdentifierType(names=['int'
+                                                                                                                 ]
+                                                                                                           )
+                                                                                       ),
+                                                                         init=None,
+                                                                         bitsize=None
+                                                                         )
+                                                                   ]
+                                                            ),
+                                             type=TypeDecl(declname='add',
+                                                           quals=[
+                                                                 ],
+                                                           type=IdentifierType(names=['int'
+                                                                                     ]
+                                                                               )
+                                                           )
+                                             ),
+                               init=None,
+                               bitsize=None
+                               ),
+                     param_decls=None,
+                     body=Compound(block_items=[Return(expr=BinaryOp(op='+',
+                                                                     left=ID(name='a'
+                                                                             ),
+                                                                     right=ID(name='b'
+                                                                              )
+                                                                     )
+                                                       )
+                                               ]
+                                   )
+                     ),
+             FuncDef(decl=Decl(name='main',
                                quals=[
                                      ],
                                storage=[
@@ -56,6 +121,40 @@ FileAST(ext=[FuncDef(decl=Decl(name='main',
                                                                    ),
                                                      bitsize=None
                                                      ),
+                                                Decl(name='c',
+                                                     quals=[
+                                                           ],
+                                                     storage=[
+                                                             ],
+                                                     funcspec=[
+                                                              ],
+                                                     type=TypeDecl(declname='c',
+                                                                   quals=[
+                                                                         ],
+                                                                   type=IdentifierType(names=['int'
+                                                                                             ]
+                                                                                       )
+                                                                   ),
+                                                     init=FuncCall(name=ID(name='add'
+                                                                           ),
+                                                                   args=ExprList(exprs=[ID(name='a'
+                                                                                           ),
+                                                                                        ID(name='b'
+                                                                                           )
+                                                                                       ]
+                                                                                 )
+                                                                   ),
+                                                     bitsize=None
+                                                     ),
+                                                FuncCall(name=ID(name='add'
+                                                                 ),
+                                                         args=ExprList(exprs=[ID(name='a'
+                                                                                 ),
+                                                                              ID(name='c'
+                                                                                 )
+                                                                             ]
+                                                                       )
+                                                         ),
                                                 If(cond=BinaryOp(op='&&',
                                                                  left=BinaryOp(op='<',
                                                                                left=ID(name='a'
@@ -76,12 +175,16 @@ FileAST(ext=[FuncDef(decl=Decl(name='main',
                                                                                                )
                                                                                 )
                                                                  ),
-                                                   iftrue=Compound(block_items=[If(cond=BinaryOp(op='>',
-                                                                                                 left=ID(name='a'
+                                                   iftrue=Compound(block_items=[If(cond=FuncCall(name=ID(name='add'
                                                                                                          ),
-                                                                                                 right=Constant(type='int',
-                                                                                                                value='2'
-                                                                                                                )
+                                                                                                 args=ExprList(exprs=[Constant(type='int',
+                                                                                                                               value='1'
+                                                                                                                               ),
+                                                                                                                      Constant(type='int',
+                                                                                                                               value='1'
+                                                                                                                               )
+                                                                                                                     ]
+                                                                                                               )
                                                                                                  ),
                                                                                    iftrue=Compound(block_items=[Assignment(op='=',
                                                                                                                            lvalue=ID(name='a'
