@@ -153,11 +153,10 @@ class LineNumberText(tk.Text):
     # logic for displaying number of lines in a file.
     def updateLineNumbers(self, type, *args):
 
-
         if type == "mouse":
             self.yview(tk.MOVETO, self.parent.textArea.yview()[0])
         else:
-            if (self.numberOfLines != int(self.parent.textArea.index('end-1c').split('.')[0])):
+            if self.numberOfLines != int(self.parent.textArea.index('end-1c').split('.')[0]):
                 self.config(state=tk.NORMAL)
                 self.numberOfLines = 0
                 lineNumbers = ""
@@ -214,6 +213,7 @@ class TextArea(tk.Text):
         self.config(width=100, wrap="none")
         self.grid(column=1, row=0, sticky=(tk.E, tk.N, tk.S, tk.W))
         self.config(relief="flat")
+        self.config(font=("Courier", 10))
 
         # 修改tab缩进的空格数
         font = tkfont.Font(font=self['font'])
@@ -377,7 +377,7 @@ class MainApplication(tk.Frame):
 
     def open_file(self,*args):
         self.filename = filedialog.askopenfilename(initialdir = "./", title = "Select file", filetypes = (("C file", "*.c"),("All files", "*.*")))
-        #we can use our filename to open up our text file
+        # we can use our filename to open up our text file
         try:
             with open(self.filename, 'r') as file:
                 self.textArea.delete('1.0', tk.END)
