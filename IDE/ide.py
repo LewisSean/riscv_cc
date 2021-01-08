@@ -1,8 +1,12 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import builtins
 import tkinter.font as tkfont
-
+from pycparser import c_ast
+from pycparser import CParser
+from pycparser.plyparser import ParseError
+from symtab import symtab_store
+from Quadruple.block_graph import FlowGraph
 
 # a notepad for c ide
 class YScrollBar(tk.Scrollbar):
@@ -233,7 +237,6 @@ class MainMenu(tk.Menu):
         tk.Menu.__init__(self, parent, *args, **kwargs)
 
 
-
         self.file_options = tk.Menu(self, tearoff=0)
         self.file_options.add_command(label='{0: <20}'.format('New'))
         self.file_options.add_command(label='{0: <20}'.format('Open') + "Ctrl+O", command=self.parent.open_file)
@@ -247,7 +250,9 @@ class MainMenu(tk.Menu):
         self.edit_options.add_command(label='{0: <20}'.format('Cut') + "Ctrl+V")
         self.edit_options.add_command(label='{0: <20}'.format('Select All') + "Ctrl+A")
 
-
+        self.compile_options = tk.Menu(self, tearoff=0)
+        self.compile_options.add_command(label='{0: <20}'.format('Gen quadruples'), command=self.parent.save_qurdruaples)
+        self.compile_options.add_command(label='{0: <20}'.format('Gen .asm'), command=self.parent.save_file_as)
 
         self.add_cascade(label="File", menu=self.file_options)
         self.add_cascade(label="Edit", menu=self.edit_options)
@@ -255,6 +260,7 @@ class MainMenu(tk.Menu):
         self.add_cascade(label="Dark Mode", command=self.parent.set_dark_mode)
         self.add_cascade(label="Line #\'s", command=self.parent.toggle_line_numbers)
         self.add_cascade(label="C syntax", command=self.parent.toggle_highlight)
+        self.add_cascade(label="Compile", menu=self.compile_options)
 
 
 class MainApplication(tk.Frame):
@@ -262,13 +268,16 @@ class MainApplication(tk.Frame):
 
         tk.Frame.__init__(self, parent, *args, **kwargs)
 
+        # 保存一个编译对象
+        self.parser = CParser()
+
         # Varibles
         self.filename = ""
         self.numberOfKeyPresses = 0
 
         # Setting Parent/Parent config
         self.parent = parent
-        self.parent.title("pyNotePad")
+        self.parent.title("riscv_cc")
         # Setting up grid positioning
         self.grid(column=0, row=0,sticky=(tk.N,tk.W,tk.E,tk.S))
         self.columnconfigure(0,weight=0)
@@ -367,7 +376,7 @@ class MainApplication(tk.Frame):
             print(self.textArea.get("1.0", 'end-1c'))
 
     def open_file(self,*args):
-        self.filename = filedialog.askopenfilename(initialdir = "/",title = "Select file", filetypes = (("Text file","*.txt"),("All files","*.*")))
+        self.filename = filedialog.askopenfilename(initialdir = "./", title = "Select file", filetypes = (("C file", "*.c"),("All files", "*.*")))
         #we can use our filename to open up our text file
         try:
             with open(self.filename, 'r') as file:
@@ -383,7 +392,7 @@ class MainApplication(tk.Frame):
         self.syntaxHighlighter.HighlightText()
 
     def save_file_as(self,*args):
-        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".txt", filetypes = (("Text file","*.txt"),("All files","*.*")))
+        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".c", filetypes = (("C file","*.c"),("All files","*.*")))
         if self.filename is None:
             return
         text = str(self.textArea.get(1.0, tk.END))
@@ -392,6 +401,40 @@ class MainApplication(tk.Frame):
         self.set_info_text("File Saved")
         self.updateOnKeyPress()
 
+    def parse_text(self):
+        text = str(self.textArea.get(1.0, tk.END))
+        try:
+            ast = self.parser.parse(text)
+            return ast
+        except ParseError as e:
+            return e
+
+    def save_qurdruaples(self,*args):
+        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".o", filetypes = (("Out file","*.o"), ("All files","*.*")))
+        if self.filename is None:
+            return
+
+        ast = self.parse_text()
+        if not isinstance(ast, c_ast.FileAST):
+            # file : line : column
+            items = str(ast)[1:].split(':', 2)
+            print(items)
+            messagebox.showerror('出错了', 'compile error on Line {} Col {}: {}'.format(items[0], items[1], items[2]))
+        else:
+            # 生成四元组
+            sts = symtab_store(ast)
+            sts.show(ast)
+            # 对FuncDef节点建立block有向图
+            for ch in ast.ext:
+                if isinstance(ch, c_ast.FuncDef):
+                    flowGraph = FlowGraph(ch, sts)
+                    self.filename.write('----------quadruples for function: {} ------------'.format(ch.decl.name) + '\n')
+                    for qua in flowGraph.quad_list:
+                        self.filename.write(str(qua) + '\n')
+            self.filename.close()
+            self.set_info_text("File Saved")
+            self.updateOnKeyPress()
+
     def save_file(self,*args):
         with open(self.filename, 'w') as file:
             text = str(self.textArea.get(1.0, tk.END))
@@ -399,6 +442,7 @@ class MainApplication(tk.Frame):
             file.close()
             self.set_info_text("File Saved")
             self.updateOnKeyPress()
+
     def save_and_quit(self, *args):
         with open(self.filename, 'w') as file:
             text = str(self.textArea.get(1.0, tk.END))
