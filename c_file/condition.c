@@ -1,19 +1,20 @@
 int main() {
 	int a = 5;
 	int b = 4;
-	while(a<5){
+	int c = 2;
+	int d = a + b;
+	if (a < 3||d>4) {
+        a+=1;
+        do{
+            a-=2;
+        }while(a<3);
 
-	if (a < 3 && a + b>2) {
-		if (a > 2) {
-			a = a - 1;
-		}
-		else {
-			a = a + 2;
-		}
+        while(a>3){
+            a+=2;
+        }
 	}
-	else {
-		a = a + 1;
+	else{
+	    a+=3;
 	}
-	int c = 1;
-	}
+	b = b + a;
 }
