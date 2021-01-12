@@ -7,7 +7,7 @@ from pycparser import CParser
 from pycparser.plyparser import ParseError
 from symtab import symtab_store
 from Quadruple.block_graph import FlowGraph
-
+from Assembly.Assembly import GenAss
 
 # a notepad for c ide
 class YScrollBar(tk.Scrollbar):
@@ -251,7 +251,7 @@ class MainMenu(tk.Menu):
 
         self.compile_options = tk.Menu(self, tearoff=0)
         self.compile_options.add_command(label='{0: <20}'.format('Gen quadruples'), command=self.parent.save_qurdruaples)
-        self.compile_options.add_command(label='{0: <20}'.format('Gen .asm'), command=self.parent.save_file_as)
+        self.compile_options.add_command(label='{0: <20}'.format('Gen .asm'), command=self.parent.gen_asm)
 
         self.add_cascade(label="File", menu=self.file_options)
         self.add_cascade(label="Edit", menu=self.edit_options)
@@ -423,13 +423,32 @@ class MainApplication(tk.Frame):
             # 生成四元组
             sts = symtab_store(ast)
             sts.show(ast)
-            # 对FuncDef节点建立block有向图
             for ch in ast.ext:
                 if isinstance(ch, c_ast.FuncDef):
                     flowGraph = FlowGraph(ch, sts)
                     self.filename.write('----------quadruples for function: {} ------------'.format(ch.decl.name) + '\n')
                     for qua in flowGraph.quad_list:
                         self.filename.write(str(qua) + '\n')
+            self.filename.close()
+            self.set_info_text("File Saved")
+            self.updateOnKeyPress()
+
+    def gen_asm(self):
+        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".s", filetypes = (("Out file", "*.s"), ("All files", "*.*")))
+        if self.filename is None:
+            return
+
+        ast = self.parse_text()
+        if not isinstance(ast, c_ast.FileAST):
+            # file : line : column
+            items = str(ast)[1:].split(':', 2)
+            print(items)
+            messagebox.showerror('出错了', 'compile error on Line {} Col {}: {}'.format(items[0], items[1], items[2]))
+        else:
+            # 生成汇编文件
+            res = GenAss(str(self.textArea.get(1.0, tk.END)), False)
+            for i in res:
+                self.filename.write(str(i) + "\n")
             self.filename.close()
             self.set_info_text("File Saved")
             self.updateOnKeyPress()

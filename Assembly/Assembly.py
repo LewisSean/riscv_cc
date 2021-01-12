@@ -1181,12 +1181,14 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         assList.insert(-3, Assembly('lw', 'ra', fs.size - 4, '(sp)'))
     return sroList,roList,assList
 
-def GenAss(file):
 
-
+def GenAss(file, flag=True):
     parser = CParser()
-    with open(file, 'r') as f:
-        ast = parser.parse(f.read(), file)
+    if flag:
+        with open(file, 'r') as f:
+            ast = parser.parse(f.read(), file)
+    else:
+        ast = parser.parse(file)
     sts = symtab.symtab_store(ast)
     sts.show(ast)
     t = sts.get_symtab_of(ast)
