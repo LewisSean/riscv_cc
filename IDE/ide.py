@@ -8,6 +8,7 @@ from pycparser.plyparser import ParseError
 from symtab import symtab_store
 from Quadruple.block_graph import FlowGraph
 
+
 # a notepad for c ide
 class YScrollBar(tk.Scrollbar):
 
@@ -62,7 +63,6 @@ class SyntaxHighlighter:
             self.status = True
             self.HighlightText()
 
-
     def clearHighlight(self):
         cursorPos = self.parent.textArea.index(tk.INSERT)
         yviewTextArea = self.parent.textArea.yview()[0]
@@ -75,7 +75,6 @@ class SyntaxHighlighter:
         self.parent.lineNumber.yview(tk.MOVETO, yviewLineNum)
 
     def HighlightText(self):
-
         # Still work that could be done by using regex instead of simple search methods.
         if not self.status:
             return
