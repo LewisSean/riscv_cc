@@ -171,6 +171,20 @@ main:
     lw    a3,-20
     add    a2,s0,a2
     sw    a3,-76(a2)
+    lw    a2,-20(s0)
+    li    a4,3
+    rem    a3,a2,a4
+    sw    a3,-20(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    rem    a4,a2,a3
+    sw    a4,-20(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    lw    a2,-24(s0)
+    rem    a3,a2,a4
+    sw    a3,-20(s0)
     li    a2,0
     mv    a0,a2
     lw    s0,76(sp)
