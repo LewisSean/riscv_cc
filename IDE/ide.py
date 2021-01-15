@@ -34,15 +34,13 @@ class SyntaxHighlighter:
 
     def __init__(self, parent, *args, **kwargs):
         self.keywordList = [
-            'break', 'case', 'char', 'const', 'continue', 'do', 'double',
-            'else', 'enum', 'extern', 'float', 'for', 'goto', 'if', 'int',
-            'long', 'register', 'return', 'short', 'signed', 'sizeof',
-            'static', 'struct', 'switch', 'union', 'unsigned', 'void',
-            'while', 'volatile'
+            'break', 'case','const', 'continue', 'do',
+            'else', 'enum', 'for', 'goto', 'if', 'register', 'return',   'sizeof',
+            'static', 'switch', 'union',
+            'while',
         ]
-        self.constantList = ["True", "False"]
-        self.built_in_names = dir(builtins)
-        self.built_in_names.append("__init__")
+        self.constantList = ["true", "false"]
+        self.built_in_names = ['float ', 'int ', 'long ', 'short ', 'signed ', 'unsigned ', 'void ', 'struct ', 'char ', 'double ', ]
         self.keywordHightlight = "red"
         self.builtinHightlight = "blue"
         self.stringHighlight = "green"
