@@ -1,3 +1,5 @@
+import sys
+sys.path.append('..')
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import builtins
@@ -434,7 +436,7 @@ class MainApplication(tk.Frame):
             self.updateOnKeyPress()
 
     def gen_asm(self):
-        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".s", filetypes = (("Out file", "*.s"), ("All files", "*.*")))
+        self.filename = filedialog.asksaveasfile(mode='w', defaultextension=".s", filetypes = (("Source file", "*.s"), ("All files", "*.*")))
         if self.filename is None:
             return
 

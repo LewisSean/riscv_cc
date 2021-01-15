@@ -10,65 +10,33 @@ data
     .word 2
     .word 3
     .word 4
-.LC2:
-    .word 1
-    .word 2
-.LC3:
-    .word 3
-    .word 4
+    .word 5
+    .word 6
 dataend
-add1:
-    addi    sp,sp,-48
-    sw    s0,44(sp)
-    addi    s0,sp,48
-    sw    a0,-36(s0)
-    li    a2,-36(s0)
-    sw    a2,-20(s0)
-    lw    a2,-20(s0)
-    mv    a0,a2
-    lw    s0,44(sp)
-    addi    sp,sp,48
-    jr    ra
-add:
-    addi    sp,sp,-48
-    sw    ra,40(sp)
-    sw    s0,40(sp)
-    addi    s0,sp,48
-    sw    a0,-36(s0)
-    sw    a1,-40(s0)
-    lw    a0,-40(s0)
-    call    add1
-    mv    a2,a0
-    sw    a2,-20(s0)
-    lw    a2,-36(s0)
-    lw    a3,-20(s0)
-    add    a4,a2,a3
-    mv    a0,a4
-    lw    ra,44(sp)
-    lw    s0,44(sp)
-    addi    sp,sp,48
-    jr    ra
 main:
-    addi    sp,sp,-96
-    sw    ra,88(sp)
-    sw    s0,88(sp)
-    addi    s0,sp,96
+    addi    sp,sp,-80
+    sw    s0,76(sp)
+    addi    s0,sp,80
     li    a2,1
     sw    a2,-20(s0)
     li    a2,2
     sw    a2,-24(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a3,a2,a3
+    sw    a3,-24(s0)
     lui    a2,%hi(.LC0)
     lw    a3,%lo(.LC0)(a2)
-    sw    a3,-60(s0)
+    sw    a3,-52(s0)
     addi    a4,a2,%lo(.LC0)
     lw    a2,4(a4)
-    sw    a2,-56(s0)
-    lw    a2,8(a4)
-    sw    a2,-52(s0)
-    lw    a2,12(a4)
     sw    a2,-48(s0)
-    lw    a2,16(a4)
+    lw    a2,8(a4)
     sw    a2,-44(s0)
+    lw    a2,12(a4)
+    sw    a2,-40(s0)
+    lw    a2,16(a4)
+    sw    a2,-36(s0)
     lui    a2,%hi(.LC1)
     lw    a3,%lo(.LC1)(a2)
     sw    a3,-76(s0)
@@ -79,136 +47,146 @@ main:
     sw    a2,-68(s0)
     lw    a2,12(a4)
     sw    a2,-64(s0)
-    li    a2,2
-    sw    a2,-44(s0)
-    li    a2,3
+    lw    a2,16(a4)
+    sw    a2,-60(s0)
+    lw    a2,20(a4)
     sw    a2,-56(s0)
+    li    a2,0
+    mul    a3,1,4
+    add    a2,a3,a2
+    mul    a2,a2,4
+    li    a3,2
+    add    a2,s0,a2
+    sw    a3,-52(a2)
+    li    a2,0
+    lw    a3,-20(s0)
+    mul    a4,a3,1
+    add    a2,a4,a2
+    mul    a2,a2,4
+    li    a3,3
+    add    a2,s0,a2
+    sw    a3,-52(a2)
     lw    a2,-20(s0)
     lw    a3,-24(s0)
     add    a4,a2,a3
-    li    a3,3
-    ble    a4,a3,.L2
-    lw    a3,-44(s0)
-    li    a5,4
-    ble    a3,a5,.L3
-.L2:
+    sw    a4,-28(s0)
+    li    a2,0
+    lw    a3,-28(s0)
+    mul    a4,a3,1
+    add    a2,a4,a2
+    mul    a2,a2,4
+    li    a3,4
+    add    a2,s0,a2
+    sw    a3,-52(a2)
+    li    a2,199
+    sw    a2,-32(s0)
+    li    a2,0
+    mul    a3,1,4
+    add    a2,a3,a2
+    mul    a2,a2,4
+    add    a2,s0,a2
+    lw    a3,-52(a2)
+    sw    a2,-20(s0)
+    li    a2,0
     lw    a3,-20(s0)
-    addi    a5,a3,1
-    sw    a5,-20(s0)
-.L5
-    lw    a3,-20(s0)
-    addi    a5,a3,-2
-    sw    a5,-20(s0)
-    lw    a3,-20(s0)
-    li    a5,3
-    bge    a3,a5,.L4
-    j    .L5
-.L4:
-.L7
-    lw    a3,-20(s0)
-    li    a5,3
-    ble    a3,a5,.L6
-    lw    a3,-20(s0)
-    addi    a5,a3,2
-    sw    a5,-20(s0)
-    j    .L7
-.L3:
-    lw    a3,-20(s0)
-    addi    a5,a3,3
-    sw    a5,-20(s0)
-.L6:
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    add    a6,a3,a5
-    sw    a6,-28(s0)
-    lw    a3,-44(s0)
-    lw    a5,-36(s0)
-    add    a6,a3,a5
-    sw    a6,-60(s0)
-    lw    a3,-36(s0)
-    sw    a3,-60(s0)
-    lui    a3,%hi(.LC2)
-    lw    a5,%lo(.LC2)(a3)
-    sw    a5,-84(s0)
-    addi    a6,a3,%lo(.LC2)
-    lw    a3,4(a6)
-    sw    a3,-80(s0)
-    lui    a3,%hi(.LC3)
-    lw    a5,%lo(.LC3)(a3)
-    sw    a5,-92(s0)
-    addi    a6,a3,%lo(.LC3)
-    lw    a3,4(a6)
-    sw    a3,-88(s0)
-    lw    a3,-92(s0)
-    lw    a5,-84(s0)
-    add    a6,a3,a5
-    sw    a6,-32(s0)
-    li    a0,1
-    lw    a1,-20(s0)
-    call    add
-    mv    a3,a0
-    sw    a3,-36(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    add    a6,a3,a5
-    lw    a3,-36(s0)
-    addi    a5,a3,1
-    mv    a0,a6
-    mv    a1,a5
-    call    add
-    mv    a3,a0
-    sw    a3,-40(s0)
-    lw    a3,-20(s0)
-    addi    a5,a3,1
-    sw    a5,-20(s0)
-    lw    a3,-20(s0)
-    addi    a5,a3,-1
-    sw    a5,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    add    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    sub    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    or    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    xor    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    and    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    mul    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    lw    a5,-24(s0)
-    div    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-20(s0)
-    addi    a5,a3,1
-    sw    a5,-20(s0)
+    mul    a4,a3,1
+    add    a2,a4,a2
+    mul    a2,a2,4
+    add    a2,s0,a2
+    lw    a3,-52(a2)
+    sw    a2,-20(s0)
+    lw    a2,-20(s0)
     lw    a3,-24(s0)
-    addi    a5,a3,-1
-    sw    a5,-20(s0)
-    lw    a3,-56(s0)
-    lw    a5,-24(s0)
-    or    a6,a3,a5
-    sw    a6,-20(s0)
-    lw    a3,-84(s0)
-    lbu    a5,-60(s0)
-    and    a6,a5,a3
-    sw    a6,-20(s0)
-    li    a3,1
-    mv    a0,a3
-    lw    ra,92(sp)
-    lw    s0,92(sp)
-    addi    sp,sp,96
+    add    a4,a2,a3
+    li    a2,0
+    mul    a3,a4,1
+    add    a2,a3,a2
+    mul    a2,a2,4
+    add    a2,s0,a2
+    lw    a3,-52(a2)
+    sw    a2,-20(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a5,a2,a3
+    li    a2,0
+    mul    a3,a5,3
+    add    a2,a3,a2
+    mul    a3,a4,1
+    add    a2,a3,a2
+    mul    a2,a2,4
+    add    a2,s0,a2
+    lw    a3,-76(a2)
+    sw    a2,-20(s0)
+    li    a2,200
+    sw    a2,-32(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    li    a2,0
+    mul    a3,1,4
+    add    a2,a3,a2
+    mul    a2,a2,4
+    add    a2,s0,a2
+    sw    a4,-52(a2)
+    li    a2,0
+    mul    a3,1,4
+    add    a2,a3,a2
+    mul    a2,a2,4
+    li    a3,4
+    add    a2,s0,a2
+    sw    a3,-52(a2)
+    li    a2,0
+    lw    a3,-20(s0)
+    mul    a4,a3,1
+    add    a2,a4,a2
+    mul    a2,a2,4
+    lw    a3,-20
+    add    a2,s0,a2
+    sw    a3,-52(a2)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    li    a2,0
+    mul    a3,a4,1
+    add    a2,a3,a2
+    mul    a2,a2,4
+    lw    a3,-20
+    add    a2,s0,a2
+    sw    a3,-52(a2)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a5,a2,a3
+    li    a2,0
+    mul    a3,a5,3
+    add    a2,a3,a2
+    mul    a3,a4,1
+    add    a2,a3,a2
+    mul    a2,a2,4
+    lw    a3,-20
+    add    a2,s0,a2
+    sw    a3,-76(a2)
+    lw    a2,-20(s0)
+    li    a4,3
+    rem    a3,a2,a4
+    sw    a3,-20(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    rem    a4,a2,a3
+    sw    a4,-20(s0)
+    lw    a2,-20(s0)
+    lw    a3,-24(s0)
+    add    a4,a2,a3
+    lw    a2,-24(s0)
+    rem    a3,a2,a4
+    sw    a3,-20(s0)
+    li    a2,0
+    mv    a0,a2
+    lw    s0,76(sp)
+    addi    sp,sp,80
     jr    ra
