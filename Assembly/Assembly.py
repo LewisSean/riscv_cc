@@ -373,10 +373,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     hasret = 0
 
     while i < len(f.quad_list):
-        print(i,'---------------------------')
-        for ii in assList:
-            print(ii)
-        if i == 37:
+        if i == 94:
             print('hi')
 
         q = f.quad_list[i]
@@ -542,8 +539,6 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
         elif q.op == '||':
             hasor = 0
 
-
-
         elif q.op == '=':
             # 赋值语句
             if (q.arg1[0] == 'False' or q.arg1[0] == 'True'):
@@ -688,10 +683,10 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 assList.append(Assembly('sw', Reg1, symidx[q.dest[0]][0], '(s0)'))
                 r.funarg[Reg1].isEmpty = True
 
-
         elif (q.op == '+' or q.op == '-' or q.op == '^' or
               q.op == '|' or q.op == '&' or q.op == '<' or
-              q.op == '>' or q.op == '*' or q.op == '/'):
+              q.op == '>' or q.op == '*' or q.op == '/' or
+              q.op=='%'):
 
             haschange = 0
             # 交换位置，保证第二个位置为常量
@@ -716,6 +711,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 Reg1 = q.arg2[0]
             else:
                 Reg1 = r.GetEmptyF()
+
             if not isinstance(q.arg2[1], MyConstant):
                 r.funarg[Reg1].symname = q.arg2[0]
 
@@ -778,7 +774,14 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
             elif q.op == '>':
                 assList.append(Assembly('sgt', Reg2, Reg0, Reg1))
                 assList.append(Assembly('andi', Reg2, Reg2, '0xff'))
-
+            elif q.op=='%':
+                if isinstance(q.arg2[1],MyConstant):
+                    Reg1=r.GetEmptyF()
+                    assList.append(Assembly('li',Reg1,q.arg2[0]))
+                    assList.append(Assembly('rem',Reg2,Reg0,Reg1))
+                    r.funarg[Reg1].isEmpty=True
+                else:
+                    assList.append(Assembly('rem', Reg2, Reg0, Reg1))
             if not (isinstance(q.arg1[1], MyConstant)):
                 if (isinstance(q.arg1[1], TmpValue)) :
                     if dest_arg!=1:

@@ -19,5 +19,8 @@ int main() {
 	a[b]=b;
 	a[b + c]=b;
 	cc[b + c][b + c]=b;
+	b=b%3;
+	b=b%c;
+	b=c%(b+c);
 
 }
