@@ -1,5 +1,3 @@
-import sys
-sys.path.append('..')
 from pycparser import c_ast
 from pycparser import CParser
 import symtab
@@ -111,14 +109,12 @@ def SortStack(s: symtab.FuncSymbol):
             basicS.append(i)
     return basicS + arrayS + structS
 
-
 def GetStruct(s: symtab.SymTab):
     ss = {}
     for key, value in s.items():
         if re.match('struct ', key) is not None:
             ss[key] = value
     return ss
-
 
 def GetStack(s: symtab.FuncSymbol, structlist) -> FunctionStack:
     varList = SortStack(s)
@@ -375,9 +371,11 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
     hasret = 0
 
     while i < len(f.quad_list):
-        if i == 94:
+        if i == 251:
             print('hi')
-
+        if len(assList)>455:
+            print('hi')
+        print(i)
         q = f.quad_list[i]
         if vis[i] == 0:
             vis[i] = 1
@@ -418,7 +416,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
             nexti = int(q.dest[0][2:])
             if nexti != (i + 1):
                 if nexti < i:
-                    assList.insert(conditionList[nexti], '.L' + str(L))
+                    assList.insert(conditionList[nexti], '.L' + str(L)+':')
                     LList[q.dest[0]] = L
                     assList.append(Assembly('j', '.L' + str(LList[q.dest[0]])))
                     L += 1
@@ -463,7 +461,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 Reg1 = r.GetEmptyF()
                 if not (isinstance(q.arg2[1], MyConstant) or isinstance(q.arg2[1], TmpValue)):
                     r.funarg[Reg1].symname = q.arg2[0]
-                    assList.append(Assembly('lw', Reg1, symidx[q.arg1[0]][0], '(s0)'))
+                    assList.append(Assembly('lw', Reg1, symidx[q.arg2[0]][0], '(s0)'))
                 elif isinstance(q.arg2[1], TmpValue):
                     r.funarg[Reg0].isEmpty = True
                     Reg1 = TempReg[q.arg2[0]]
@@ -491,7 +489,20 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 loc = LList.get(tmpq.dest[0], -1)
                 if loc == -1:
                     LList[tmpq.dest[0]] = L
-                    L += 1
+                    tmpnexti = int(tmpq.dest[0][2:])
+                    if tmpnexti < i:
+                        assList.insert(conditionList[tmpnexti], '.L' + str(L)+':')
+                        LList[q.dest[0]] = L
+
+                        L += 1
+                        rec = 0
+                        for k in conditionList.keys():
+                            if k == tmpnexti:
+                                rec = 1
+                            if rec == 1:
+                                conditionList[k] += 1
+                    else:
+                        L += 1
                 if hasor == 1:
                     if q.op == 'j<':
                         assList.append(Assembly('ble', Reg0, Reg1, '.L' + str(LList[orq.dest[0]])))
@@ -515,9 +526,9 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     elif q.op == 'j==':
                         assList.append(Assembly('bne', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
                     elif q.op == 'j<=':
-                        assList.append(Assembly('blt', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
-                    elif q.op == 'j>=':
                         assList.append(Assembly('bgt', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
+                    elif q.op == 'j>=':
+                        assList.append(Assembly('blt', Reg0, Reg1, '.L' + str(LList[tmpq.dest[0]])))
 
                 if Reg0 in r.funarg.keys():
                     r.funarg[Reg0].isEmpty = True
@@ -526,7 +537,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
             else:
                 nexti = int(q.dest[0][2:])
                 if nexti < i:
-                    assList.insert(conditionList[nexti], '.L' + str(L))
+                    assList.insert(conditionList[nexti], '.L' + str(L)+':')
                     LList[q.dest[0]] = L
                     assList.append(Assembly('j', '.L' + str(LList[q.dest[0]])))
                     L += 1
@@ -749,7 +760,18 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                 else:
                     assList.append(Assembly('sub', Reg2, Reg0, Reg1))
             elif q.op == '*':
+                if isinstance(q.arg1[1],MyConstant):
+                    Reg0=r.GetEmptyF()
+                    assList.append(Assembly('li', Reg0,q.arg1[0]))
+                if isinstance(q.arg2[1], MyConstant):
+                    Reg1 = r.GetEmptyF()
+                    assList.append(Assembly('li', Reg1,q.arg2[0]))
                 assList.append(Assembly('mul', Reg2, Reg0, Reg1))
+                if isinstance(q.arg1[1],MyConstant):
+                    r.funarg[Reg0].isEmpty=True
+                if isinstance(q.arg2[1], MyConstant):
+                    r.funarg[Reg1].isEmpty=True
+
             elif q.op == '/':
                 assList.append(Assembly('div', Reg2, Reg0, Reg1))
             elif q.op == '^':
@@ -818,7 +840,7 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                         r.funarg[TempReg[q.arg2[0]]].isEmpty = True
                     else:
                         Reg0 = r.GetEmptyF()
-                        assList.append(Assembly('lw', Reg0, symidx[q.arg1[0]][0]))
+                        assList.append(Assembly('lw', Reg0, symidx[q.arg1[0]][0],'(s0)'))
                         assList.append(Assembly('add',TempReg[q.arg2[0]],'s0',TempReg[q.arg2[0]]))
                         assList.append(Assembly('sw', Reg0, arrayidx[0], '(' + TempReg[q.arg2[0]] + ')'))
                         r.funarg[Reg0].isEmpty = True
@@ -829,7 +851,8 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     Reg0 = r.GetEmptyF()
                     if q.dest[1].element_size == 4:
                         roList.append('.LC' + str(LC) + ':')
-                        roList.append('    .word ' + q.arg1[0])
+                        roList[-1]+='    .word ' + q.arg1[0]
+                        #roList.append('    .word ' + q.arg1[0])
                         assList.append(Assembly('lui', Reg0, '%hi(.LC' + str(LC) + ')'))
                         Reg1 = r.GetEmptyF()
                         assList.append(Assembly('lw', Reg1, '%lo(.LC' + str(LC) + ')', '(' + Reg0 + ')'))
@@ -886,7 +909,8 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     LC += 1
                 else:
                     if q.dest[1].element_size == 4:
-                        roList.append('    .word ' + q.arg1[0])
+                        roList[-1]+=','+q.arg1[0]
+                        #roList.append('    .word ' + q.arg1[0])
                         Reg1 = r.GetEmptyF()
                         assList.append(Assembly('lw', Reg1, q.arg2[0], '(' + avis[q.dest[0]][1] + ')'))
                         assList.append(Assembly('sw', Reg1, arrayidx[int(q.arg2[0]) // 4], '(s0)'))
@@ -979,8 +1003,11 @@ def FunctionAss(f: FlowGraph, s: symtab.FuncSymbol, structlist):
                     assList.append(Assembly('add', TempReg[q.arg2[0]], 's0', TempReg[q.arg2[0]]))
                     assList.append(Assembly('lw', Reg0, arrayidx[0], '(' + TempReg[q.arg2[0]] + ')'))
                     r.funarg[TempReg[q.arg2[0]]].isEmpty = True
-                    r.funarg[Reg0].isEmpty=True
-
+                    TempReg[q.dest[0]]=Reg0
+                    #r.funarg[Reg0].isEmpty=True
+                # if isinstance(q.dest[1], TmpValue):
+                #     Reg1= r.GetEmptyF()
+                #     TempReg[q.dest[0]]=Reg1
             i = i + 1
             continue
         elif q.op == 'return':
@@ -1047,24 +1074,25 @@ def GenAss(file, flag=True):
     num = 0
     res = []
     if data:
-        res.append('data')
+        res.append('.data')
         res += data
-        res.append('dataend')
+        res.append('.dataend')
     else:
         res += data
     res += text
     print('--------------start to get assembly--------------------')
+    num=0
     for i in res:
         num += 1
-        print(i)
+        print(num,'  ',i)
     return res
 
 
 if __name__ == '__main__':
-    filename = '../c_file/array.c'
+    filename = '../c_file/global.c'
     # filename = '../c_file/function.c'
     res = GenAss(filename)
-    with open('output.s', 'w') as f:
+    with open('output.txt', 'w') as f:
         for i in res:
             f.write(str(i) + "\n")
 """
