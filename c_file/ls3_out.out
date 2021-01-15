@@ -317,9 +317,8 @@ FileAST(ext=[Decl(name=None,
                                                                                           field=ID(name='arr'
                                                                                                    )
                                                                                           ),
-                                                                           subscript=Constant(type='int',
-                                                                                              value='2'
-                                                                                              )
+                                                                           subscript=ID(name='a'
+                                                                                        )
                                                                            ),
                                                            rvalue=Constant(type='int',
                                                                            value='1000'
@@ -441,38 +440,30 @@ FileAST(ext=[Decl(name=None,
                                                                    ),
                                                      bitsize=None
                                                      ),
-                                                Decl(name='k',
-                                                     quals=[
-                                                           ],
-                                                     storage=[
-                                                             ],
-                                                     funcspec=[
-                                                              ],
-                                                     type=TypeDecl(declname='k',
-                                                                   quals=[
-                                                                         ],
-                                                                   type=IdentifierType(names=['int'
-                                                                                             ]
-                                                                                       )
-                                                                   ),
-                                                     init=UnaryOp(op='*',
-                                                                  expr=BinaryOp(op='+',
-                                                                                left=UnaryOp(op='*',
-                                                                                             expr=BinaryOp(op='+',
-                                                                                                           left=ID(name='c'
-                                                                                                                   ),
-                                                                                                           right=Constant(type='int',
-                                                                                                                          value='1'
-                                                                                                                          )
-                                                                                                           )
-                                                                                             ),
-                                                                                right=Constant(type='int',
-                                                                                               value='2'
-                                                                                               )
-                                                                                )
-                                                                  ),
-                                                     bitsize=None
-                                                     ),
+                                                Assignment(op='=',
+                                                           lvalue=ArrayRef(name=ID(name='a'
+                                                                                   ),
+                                                                           subscript=Constant(type='int',
+                                                                                              value='3'
+                                                                                              )
+                                                                           ),
+                                                           rvalue=UnaryOp(op='*',
+                                                                          expr=BinaryOp(op='+',
+                                                                                        left=UnaryOp(op='*',
+                                                                                                     expr=BinaryOp(op='+',
+                                                                                                                   left=ID(name='c'
+                                                                                                                           ),
+                                                                                                                   right=Constant(type='int',
+                                                                                                                                  value='1'
+                                                                                                                                  )
+                                                                                                                   )
+                                                                                                     ),
+                                                                                        right=Constant(type='int',
+                                                                                                       value='2'
+                                                                                                       )
+                                                                                        )
+                                                                          )
+                                                           ),
                                                 Assignment(op='=',
                                                            lvalue=ArrayRef(name=ArrayRef(name=ID(name='c'
                                                                                                  ),

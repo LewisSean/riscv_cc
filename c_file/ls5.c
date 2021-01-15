@@ -1,7 +1,6 @@
 int main(){
 int a = 5;
-if(a < 3){a = a - 1;}
-else a = a + 1;
-int c = 1;
+int arr[5] = {1, 1, 1, 1, 1};
+arr[a] = 100;
 return a;
 }

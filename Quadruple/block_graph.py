@@ -468,7 +468,7 @@ def gen_ast_parents(node: c_ast.Node, map: dict):
 
 
 if __name__ == '__main__':
-    test_file = 'wyb1.c'
+    test_file = 'ls5.c'
     file = '../c_file/'+test_file
     parser = CParser()
     with open(file, 'r') as f:

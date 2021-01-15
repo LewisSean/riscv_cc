@@ -4,7 +4,7 @@ int a = 1000;
 int main(int c ,int b){
 struct point arrrr[3] = {1,2,3,4,5,6};
 struct line l = { 1,2,3,4,5,5,5, 100, 1000};
-l.arr[2] = 1000;
+l.arr[1] = 1000;
 l.b.y = 10000;
 c = l.a.y;
 

@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
     filename = '../c_file/array.c'
     # filename = '../c_file/function.c'
     res = GenAss(filename)
-    with open('output.c', 'w') as f:
+    with open('output.s', 'w') as f:
         for i in res:
             f.write(str(i) + "\n")
 """
